@@ -1,22 +1,23 @@
 import { Application, Container } from 'pixi.js'
 import { applyLetterbox } from './Viewport'
 
+/** 每帧回调，参数为与上一帧的时间间隔（秒）。 */
 export type GameFrameCallback = (deltaSeconds: number) => void
 
 export interface GameConfig {
-  /** Fixed logical resolution width (e.g. 1280). */
+  /** 固定逻辑分辨率宽度（例如 1280）。 */
   designWidth: number
-  /** Fixed logical resolution height (e.g. 720). */
+  /** 固定逻辑分辨率高度（例如 720）。 */
   designHeight: number
   backgroundColor?: number
   antialias?: boolean
-  /** Defaults to `window.devicePixelRatio`. */
+  /** 默认使用 `window.devicePixelRatio`。 */
   resolution?: number
 }
 
 /**
- * Root runtime: Pixi Application, letterboxed `world` container, and a single
- * ticker-driven frame callback. Use `world` for all gameplay display objects.
+ * 运行时根对象：Pixi Application、letterbox 下的 `world` 容器，
+ * 以及由 ticker 驱动的单路帧回调。所有玩法相关的显示对象应挂在 `world` 下。
  */
 export class Game {
   private app: Application | null = null
@@ -82,7 +83,7 @@ export class Game {
   }
 
   /**
-   * Re-run letterbox when the renderer size changes (e.g. window resize).
+   * 当渲染尺寸变化时（例如窗口 resize）重新计算 letterbox。
    */
   private syncLetterbox(): void {
     if (!this.app) return
@@ -96,7 +97,7 @@ export class Game {
     )
   }
 
-  /** Called every frame after `init`; pass `null` to clear. */
+  /** 在 `init` 之后每帧调用；传入 `null` 可清除回调。 */
   setFrameCallback(fn: GameFrameCallback | null): void {
     this.frameCallback = fn
   }

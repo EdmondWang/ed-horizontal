@@ -21,6 +21,7 @@
 
 ## 代码风格
 
+- **注释**：`src` 内注释一律使用**中文**（见 `.cursor/rules/ed-horizontal.mdc`）。
 - **ESLint 优先于 Prettier**：以 `.eslintrc.cjs` 为准；若两者冲突，调整 `.prettierrc` 以符合 ESLint，而不是反过来关闭 ESLint 规则来迁就 Prettier。
 - **模块**：优先 **named export** 与 **named import**（见 ESLint `import/no-default-export`；配置文件等在 `overrides` 中允许 default）。
 

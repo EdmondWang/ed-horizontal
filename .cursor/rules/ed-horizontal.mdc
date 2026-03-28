@@ -1,5 +1,5 @@
 ---
-description: ed-horizontal 项目约定 — 复用 Game/Viewport/颜色工具；ESLint 优先；named import/export
+description: ed-horizontal 项目约定 — 复用 Game/Viewport/颜色工具；ESLint 优先；named import/export；src 内中文注释
 alwaysApply: true
 ---
 
@@ -12,6 +12,7 @@ alwaysApply: true
 
 ## 代码风格（生成与修改代码时必须遵守）
 
+- **注释语言**：`src` 下源码中的注释（含 `//`、`/* */`、JSDoc）**一律使用中文**。专有名词（API 名、Pixi、Vite、`clientToWorld` 等）可保留英文；无需为第三方类型上的英文说明再翻译。
 - **ESLint 为最高优先级**：以 `.eslintrc.cjs` 为准；`npm run lint` 必须通过。生成代码前先对照其中的规则。
 - **Prettier 从属于 ESLint**：若格式化结果与 ESLint 冲突，**修改 `.prettierrc`（或相关配置）以符合 ESLint**，而不是用 Prettier 覆盖 ESLint 规则。不要引入会关闭 ESLint 规则来迁就 Prettier 的配置（例如为「迁就 Prettier」而关掉本项目的风格规则）。
 - **模块边界**：优先 **named export**（`export const` / `export function` / `export type` / `export { foo }`），避免 `export default`。优先 **named import**（`import { a, b } from '...'`）；类型使用 `import type { ... }` 亦可。例外：配置文件等已在 ESLint `overrides` 中允许 default 的文件。

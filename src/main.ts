@@ -3,8 +3,8 @@ import { Game } from './core/Game'
 import { pixiColors } from './utils/pixiColors'
 
 /**
- * Phase 1: bootstrap + letterboxed world + optional dev outline.
- * Next: input pipeline (using clientToWorld), entity/system layers, assets, audio.
+ * 第一阶段：启动流程、letterbox 世界与可选的开发用边框。
+ * 后续：输入管线（配合 clientToWorld）、实体/系统、资源与音频等。
  */
 async function main() {
   const game = new Game({

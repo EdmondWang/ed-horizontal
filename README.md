@@ -33,7 +33,7 @@ src/
 - **指针坐标**：使用 `clientToWorld(clientX, clientY, canvas, game.world)` 得到逻辑坐标，再去做格子命中等逻辑。
 - **颜色**：页面用 `colors.css`；画布内用 `pixiColors` 或局部字面量，并与 CSS 语义保持一致（见 `COLORS.md`）。
 - **演进方式**：在现有 `Game` / `Viewport` / `pixiColors` 上**增量扩展**，避免平行实现第二套引擎层。
-- **代码风格**：遵守 ESLint（优先于 Prettier）；优先 named export / named import。详见 `AGENTS.md`。
+- **代码风格**：`src` 内注释使用中文；遵守 ESLint（优先于 Prettier）；优先 named export / named import。详见 `AGENTS.md`。
 
 ## 开发命令
 

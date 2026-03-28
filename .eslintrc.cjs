@@ -13,7 +13,7 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
-    /** Prefer `export const` / `export function` / `export { x }` over `export default`. */
+    /** 优先具名导出（`export const` / `export function` / `export { x }`），避免 `export default`。 */
     'import/no-default-export': 'error'
   },
   overrides: [
