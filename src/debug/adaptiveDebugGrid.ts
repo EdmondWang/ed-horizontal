@@ -1,4 +1,5 @@
 import { Container, Graphics } from 'pixi.js'
+import { computeGridLayout } from './gridLayout'
 
 export interface MountAdaptiveDebugGridOptions {
   /**
@@ -39,24 +40,18 @@ export function mountAdaptiveDebugGrid(
     lineAlpha = 0.45
   } = options
 
-  const cols = Math.max(1, Math.floor(designWidth / referenceCellSize))
-  const rows = Math.max(1, Math.floor(designHeight / referenceCellSize))
-
   const g = new Graphics()
   g.label = 'adaptive-debug-grid'
   stage.addChild(g)
 
   const redraw = (): void => {
     const { width: W, height: H } = getRendererSize()
-    if (W <= 0 || H <= 0) {
+    const layout = computeGridLayout(W, H, designWidth, designHeight, referenceCellSize)
+    if (!layout) {
       return
     }
 
-    const cellSize = Math.min(W / cols, H / rows)
-    const gridW = cols * cellSize
-    const gridH = rows * cellSize
-    const offsetX = (W - gridW) / 2
-    const offsetY = (H - gridH) / 2
+    const { cols, rows, cellSize, offsetX, offsetY, gridW, gridH } = layout
 
     g.clear()
     g.position.set(offsetX, offsetY)
