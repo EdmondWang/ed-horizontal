@@ -1,4 +1,4 @@
-import { Application, Container } from 'pixi.js'
+import { Application, Container, Renderer } from 'pixi.js'
 import { applyLetterbox } from './Viewport'
 
 /** 每帧回调，参数为与上一帧的时间间隔（秒）。 */
@@ -25,7 +25,10 @@ export class Game {
     Omit<GameConfig, 'designWidth' | 'designHeight'>
   private readonly worldRoot: Container
   private frameCallback: GameFrameCallback | null = null
-  private readonly onResize = (): void => this.syncLetterbox()
+  /** 放在下一帧执行，确保排在 Pixi ResizePlugin 的 resize 之后，使用最新 renderer 尺寸。 */
+  private readonly onResize = (): void => {
+    requestAnimationFrame(() => this.syncLetterbox())
+  }
   private readonly onTick = (): void => {
     if (!this.app) return
     this.frameCallback?.(this.app.ticker.deltaMS / 1000)
@@ -54,12 +57,32 @@ export class Game {
     return this.config.designHeight
   }
 
+  /** 初始化后可访问，用于屏幕空间叠加层（如自适应调试网格）。 */
+  get renderer(): Renderer {
+    if (!this.app) {
+      throw new Error('Game 尚未 init')
+    }
+    return this.app.renderer
+  }
+
+  /** 初始化后可访问；`world` 为其子节点，用于 letterbox 内玩法坐标。 */
+  get stage(): Container {
+    if (!this.app) {
+      throw new Error('Game 尚未 init')
+    }
+    return this.app.stage
+  }
+
   async init(): Promise<void> {
     if (this.app) return
 
+    const mount = document.getElementById('game-container')
+    /** 与画布挂载的容器一致，避免 innerWidth/innerHeight 与容器 client 尺寸不一致导致 letterbox 与可见区域错位。 */
+    const resizeTarget: Window | HTMLElement = mount ?? window
+
     const app = new Application()
     await app.init({
-      resizeTo: window,
+      resizeTo: resizeTarget,
       backgroundColor: this.config.backgroundColor,
       antialias: this.config.antialias,
       resolution: this.config.resolution,
@@ -69,7 +92,6 @@ export class Game {
     this.app = app
     app.stage.addChild(this.worldRoot)
 
-    const mount = document.getElementById('game-container')
     if (mount) {
       mount.appendChild(app.canvas)
     } else {
@@ -77,7 +99,7 @@ export class Game {
     }
 
     window.addEventListener('resize', this.onResize)
-    this.syncLetterbox()
+    this.onResize()
 
     app.ticker.add(this.onTick)
   }

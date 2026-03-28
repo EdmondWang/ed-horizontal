@@ -28,8 +28,15 @@ export function applyLetterbox(
 ): void {
   const scale = Math.min(screenWidth / designWidth, screenHeight / designHeight)
   world.scale.set(scale)
-  world.position.set(
-    (screenWidth - designWidth * scale) / 2,
-    (screenHeight - designHeight * scale) / 2
-  )
+
+  const scaledW = designWidth * scale
+  const scaledH = designHeight * scale
+  let x = (screenWidth - scaledW) * 0.5
+  let y = (screenHeight - scaledH) * 0.5
+
+  // 抵消浮点误差，避免整块画面超出 renderer 一像素而被裁切（底部/侧边看起来像「少一行」）
+  x = Math.max(0, Math.min(x, screenWidth - scaledW))
+  y = Math.max(0, Math.min(y, screenHeight - scaledH))
+
+  world.position.set(x, y)
 }

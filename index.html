@@ -33,10 +33,9 @@
         height: 100%;
       }
 
+      /* 画布尺寸由 Pixi（autoDensity 时内联 style）控制，勿用 100% 强拉，以免与 renderer 比例不一致产生裁切感 */
       #game-container canvas {
         display: block;
-        width: 100%;
-        height: 100%;
       }
     </style>
   </head>
