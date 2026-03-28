@@ -1,28 +1,26 @@
+import { Graphics } from 'pixi.js'
 import { Game } from './core/Game'
-import { SpriteEntity } from './entities/SpriteEntity'
+import { pixiColors } from './utils/pixiColors'
 
+/**
+ * Phase 1: bootstrap + letterboxed world + optional dev outline.
+ * Next: input pipeline (using clientToWorld), entity/system layers, assets, audio.
+ */
 async function main() {
   const game = new Game({
-    width: 1280,
-    height: 720,
-    backgroundColor: 0x1a1a2e
+    designWidth: 1280,
+    designHeight: 720,
+    backgroundColor: pixiColors.bgPrimary
   })
 
-  await game.initialize()
+  await game.init()
 
-  const renderSystem = game.getSystem('render')
-  if (renderSystem) {
-    const testEntity = new SpriteEntity({
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 100,
-      color: 0x667eea
-    })
-    renderSystem.registerEntity(testEntity)
-  }
-
-  game.start()
+  const outline = new Graphics()
+  outline.rect(0, 0, game.designWidth, game.designHeight)
+  outline.stroke({ width: 2, color: pixiColors.strokeMuted })
+  game.world.addChild(outline)
 }
 
-main()
+main().catch((err) => {
+  console.error(err)
+})

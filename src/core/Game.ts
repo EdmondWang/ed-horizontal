@@ -1,147 +1,118 @@
 import { Application, Container } from 'pixi.js'
-import { System } from '../systems/System'
-import { RenderSystem } from '../systems/RenderSystem'
-import { InputSystem } from '../systems/InputSystem'
+import { applyLetterbox } from './Viewport'
+
+export type GameFrameCallback = (deltaSeconds: number) => void
 
 export interface GameConfig {
-  width: number
-  height: number
+  /** Fixed logical resolution width (e.g. 1280). */
+  designWidth: number
+  /** Fixed logical resolution height (e.g. 720). */
+  designHeight: number
   backgroundColor?: number
   antialias?: boolean
+  /** Defaults to `window.devicePixelRatio`. */
   resolution?: number
 }
 
+/**
+ * Root runtime: Pixi Application, letterboxed `world` container, and a single
+ * ticker-driven frame callback. Use `world` for all gameplay display objects.
+ */
 export class Game {
   private app: Application | null = null
-  private config: GameConfig
-  private gameContainer: Container
-  private isRunning: boolean = false
-  private lastTime: number = 0
-  private systems: Map<string, System> = new Map()
-  private renderSystem: RenderSystem
-  private inputSystem: InputSystem
+  private readonly config: Required<Pick<GameConfig, 'designWidth' | 'designHeight'>> &
+    Omit<GameConfig, 'designWidth' | 'designHeight'>
+  private readonly worldRoot: Container
+  private frameCallback: GameFrameCallback | null = null
+  private readonly onResize = (): void => this.syncLetterbox()
+  private readonly onTick = (): void => {
+    if (!this.app) return
+    this.frameCallback?.(this.app.ticker.deltaMS / 1000)
+  }
 
   constructor(config: GameConfig) {
     this.config = {
       backgroundColor: 0x000000,
       antialias: true,
-      resolution: window.devicePixelRatio || 1,
+      resolution: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
       ...config
     }
-    this.gameContainer = new Container()
-    this.renderSystem = new RenderSystem(this.gameContainer)
-    this.inputSystem = new InputSystem()
-
-    this.registerSystem('render', this.renderSystem)
-    this.registerSystem('input', this.inputSystem)
+    this.worldRoot = new Container()
+    this.worldRoot.label = 'world'
   }
 
-  async initialize(): Promise<void> {
-    this.app = new Application()
+  get world(): Container {
+    return this.worldRoot
+  }
 
-    await this.app.init({
-      width: this.config.width,
-      height: this.config.height,
+  get designWidth(): number {
+    return this.config.designWidth
+  }
+
+  get designHeight(): number {
+    return this.config.designHeight
+  }
+
+  async init(): Promise<void> {
+    if (this.app) return
+
+    const app = new Application()
+    await app.init({
+      resizeTo: window,
       backgroundColor: this.config.backgroundColor,
       antialias: this.config.antialias,
       resolution: this.config.resolution,
-      autoDensity: true,
-      resizeTo: window
+      autoDensity: true
     })
 
-    const container = document.getElementById('game-container')
-    if (container) {
-      container.appendChild(this.app.canvas)
+    this.app = app
+    app.stage.addChild(this.worldRoot)
+
+    const mount = document.getElementById('game-container')
+    if (mount) {
+      mount.appendChild(app.canvas)
+    } else {
+      document.body.appendChild(app.canvas)
     }
 
-    this.app.stage.addChild(this.gameContainer)
-    this.setupResizeHandler()
+    window.addEventListener('resize', this.onResize)
+    this.syncLetterbox()
+
+    app.ticker.add(this.onTick)
   }
 
-  private setupResizeHandler(): void {
+  /**
+   * Re-run letterbox when the renderer size changes (e.g. window resize).
+   */
+  private syncLetterbox(): void {
     if (!this.app) return
-
-    window.addEventListener('resize', () => {
-      if (this.app) {
-        const ratio = Math.min(
-          window.innerWidth / this.config.width,
-          window.innerHeight / this.config.height
-        )
-        this.gameContainer.scale.set(ratio)
-        this.gameContainer.x = (window.innerWidth - this.config.width * ratio) / 2
-        this.gameContainer.y = (window.innerHeight - this.config.height * ratio) / 2
-      }
-    })
-
-    window.dispatchEvent(new Event('resize'))
+    const { width, height } = this.app.renderer
+    applyLetterbox(
+      this.worldRoot,
+      this.config.designWidth,
+      this.config.designHeight,
+      width,
+      height
+    )
   }
 
-  start(): void {
-    if (this.isRunning) return
-
-    this.isRunning = true
-    this.lastTime = performance.now()
-    this.gameLoop()
+  /** Called every frame after `init`; pass `null` to clear. */
+  setFrameCallback(fn: GameFrameCallback | null): void {
+    this.frameCallback = fn
   }
 
-  stop(): void {
-    this.isRunning = false
-  }
-
-  private gameLoop = (): void => {
-    if (!this.isRunning) return
-
-    const currentTime = performance.now()
-    const deltaTime = (currentTime - this.lastTime) / 1000
-    this.lastTime = currentTime
-
-    this.update(deltaTime)
-    this.render()
-
-    requestAnimationFrame(this.gameLoop)
-  }
-
-  private update(deltaTime: number): void {
-    this.systems.forEach((system) => {
-      if (system.active) {
-        system.update(deltaTime)
-      }
-    })
-  }
-
-  private render(): void {
-  }
-
-  registerSystem(name: string, system: System): void {
-    this.systems.set(name, system)
-  }
-
-  unregisterSystem(name: string): void {
-    const system = this.systems.get(name)
-    if (system) {
-      system.clear()
-      this.systems.delete(name)
-    }
-  }
-
-  getSystem<T extends System>(name: string): T | undefined {
-    return this.systems.get(name) as T
-  }
-
-  get container(): Container {
-    return this.gameContainer
-  }
-
-  get input(): InputSystem {
-    return this.inputSystem
+  getCanvas(): HTMLCanvasElement | null {
+    return this.app?.canvas ?? null
   }
 
   destroy(): void {
-    this.stop()
-    this.systems.forEach((system) => system.clear())
-    if (this.app) {
-      this.app.destroy(true)
-      this.app = null
-    }
+    if (!this.app) return
+
+    window.removeEventListener('resize', this.onResize)
+    this.app.ticker.remove(this.onTick)
+    this.frameCallback = null
+
+    this.app.destroy(true, { children: true })
+    this.app = null
   }
 }
