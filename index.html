@@ -1,29 +1,39 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>二维横版PVE对战游戏</title>
+    <link rel="stylesheet" href="/src/styles/colors.css" />
     <style>
       * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
+
       body {
-        background-color: #1a1a2e;
+        background-color: var(--color-bg-primary);
+        color: var(--color-text-primary);
         display: flex;
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family: var(--font-family-base);
+        transition: background-color var(--transition-base), color var(--transition-base);
       }
+
       #game-container {
         position: relative;
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-xl);
       }
+
       canvas {
         display: block;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--gradient-primary);
+        border-radius: var(--radius-lg);
       }
     </style>
   </head>
