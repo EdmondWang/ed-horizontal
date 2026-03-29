@@ -1,4 +1,5 @@
 import { Game } from './core/game'
+import type { DevOverlayMode } from './types/devOverlay'
 import { mountAdaptiveDebugGrid } from './debugArch/adaptiveDebugGrid'
 import { mountScreenSweepWalkers } from './debugArch/screenSweepDebug'
 import type { ScreenSweepWalkerConfig } from './debugArch/screenSweepDebug'
@@ -26,9 +27,6 @@ const DEV_OVERLAY_SCREEN_SWEEP_WALKERS: ScreenSweepWalkerConfig[] = [
   { fillColor: pixiColors.semantic.lime, stepPauseMs: 73 },
   { fillColor: pixiColors.semantic.orange, stepPauseMs: 80 }
 ]
-
-/** 主画布上的开发用叠加层（与「调试架构」门户页不是同一概念）。 */
-type DevOverlayMode = 'screen-sweep' | 'snow'
 
 /**
  * 从 URL 读取 `devOverlay`：无参数则不挂载任何开发叠加层。
@@ -61,7 +59,6 @@ async function main(): Promise<void> {
   await game.init()
 
   const mount = document.getElementById('game-container')
-
   const getRendererSize = (): { width: number; height: number } => ({
     width: game.renderer.width,
     height: game.renderer.height
