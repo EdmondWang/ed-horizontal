@@ -4,6 +4,12 @@
  */
 export const pixiColors = {
   bgPrimary: 0x1a1a2e,
+  /** 与 `--color-bg-secondary`（深色主题默认）一致 */
+  bgSecondary: 0x16213e,
+  /** 与 `--color-bg-tertiary`（深色主题默认）一致 */
+  bgTertiary: 0x0f3460,
+  /** 与 `--color-bg-elevated`（深色主题默认）一致 */
+  bgElevated: 0x1f293a,
   strokeMuted: 0x3d3d5c,
   game: {
     player: 0x22c55e,

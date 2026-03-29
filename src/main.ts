@@ -1,4 +1,5 @@
 import { Game } from './core/game'
+import { mountMainTwoColumnLayout } from './mainLayout'
 import type { DevOverlayMode } from './types/devOverlay'
 import { mountAdaptiveDebugGrid } from './debugArch/adaptiveDebugGrid'
 import { mountScreenSweepWalkers } from './debugArch/screenSweepDebug'
@@ -44,7 +45,7 @@ function getDevOverlayModeFromUrl(): DevOverlayMode | null {
 }
 
 /**
- * 启动流程与 letterbox 世界；主玩法内容尚未挂载时画布为空。
+ * 启动流程与 letterbox 世界；`world` 内挂载主界面布局（entityPoolCol / battleAreaCol 及内嵌 defendLineCol、enemyLineCol）。
  * 开发用叠加层仅在有 `?devOverlay=…` 时挂载（如自 `debugArch.html` 跳转）。
  */
 async function main(): Promise<void> {
@@ -57,6 +58,12 @@ async function main(): Promise<void> {
   })
 
   await game.init()
+
+  mountMainTwoColumnLayout({
+    world: game.world,
+    designWidth: game.designWidth,
+    designHeight: game.designHeight
+  })
 
   const mount = document.getElementById('game-container')
   const getRendererSize = (): { width: number; height: number } => ({
