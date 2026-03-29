@@ -1,3 +1,7 @@
+/**
+ * 调试架构门户页（`debugArch.html`）：选择后跳主入口并带上开发用叠加层参数。
+ * 与主游戏内 `devOverlay`（扫屏 / 下雪）不同，本页仅负责导航。
+ */
 function main(): void {
   const root = document.getElementById('debugArchRoot')
   if (!root) {
@@ -13,11 +17,11 @@ function main(): void {
   `
 
   document.getElementById('debugArchBtnSweep')?.addEventListener('click', () => {
-    window.location.href = `${import.meta.env.BASE_URL}index.html?debugMode=screen-sweep`
+    window.location.href = `${import.meta.env.BASE_URL}index.html?devOverlay=screen-sweep`
   })
 
   document.getElementById('debugArchBtnSnow')?.addEventListener('click', () => {
-    window.location.href = `${import.meta.env.BASE_URL}index.html?debugMode=snow`
+    window.location.href = `${import.meta.env.BASE_URL}index.html?devOverlay=snow`
   })
 }
 

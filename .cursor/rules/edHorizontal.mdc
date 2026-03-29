@@ -9,12 +9,13 @@ alwaysApply: true
 - 全屏 letterbox、resize、`clientToWorld`：**只使用** `src/core/game.ts` 与 `src/core/viewport.ts`，不要另写一套缩放/居中。
 - 画布颜色：优先 `src/utils/pixiColors.ts`，并与 `src/styles/colors.css` 语义一致；见 `colors.md`。
 - 在现有模块上**增量扩展**，避免平行实现第二套游戏引擎层。
+- **未上线 / 未上产线**：项目**未**面向生产环境发布时，改动**不必**考虑与旧版兼容（旧 URL 参数、存档格式、公开 API 形态等）。允许直接重命名、改查询串、删废弃入口，**不要**为此额外写 shim、长期 `@deprecated` 双轨或兼容分支——除非用户明确要求保留兼容。
 
 ## 游戏内「页面」与 HTML 入口（相对 ERP / 多页 Web）
 
 - **与常见 ERP/后台的差异**：全屏游戏通常只有一个**主 HTML 壳**（如 `index.html`）和一个（或少数）画布；所谓「新页面」在玩法上多指 **Pixi 内的场景/状态**（不同 `Container`、场景栈或路由状态机），**不要**像业务系统那样默认再建一个 `.html` 当新功能页。
 - **何时才增加第二个 HTML**：例如独立落地页、与主游戏完全无关的工具、或**刻意**在加载 Pixi 前展示极轻量的门户（当前 `debugArch.html` 即：选调试模式后再进主入口）。这不是唯一做法，也可改为在 **`index.html` 内**用 DOM 浮层或 Pixi UI 完成同一流程。
-- **从调试门户跳 `index.html?debugMode=…` 是否合理**：合理。主游戏仍单页加载，`?debugMode=` 只是启动参数，等价于「深链进不同调试场景」。若希望**全程无整页跳转**，可把模式选择并入 `index.html` 的同一段初始化逻辑，用代码切换场景而非 `location.href`。
+- **从调试门户跳 `index.html?devOverlay=…` 是否合理**：合理。主游戏仍单页加载，`devOverlay`（如 `screen-sweep`、`snow`）表示**主画布上的开发用叠加层**，与 `debugArch.html` 门户本身不同。若希望**全程无整页跳转**，可把模式选择并入 `index.html` 的同一段初始化逻辑，用代码切换场景而非 `location.href`。
 
 ## 协作确认（助手须遵守）
 

@@ -1,20 +1,20 @@
 import { Game } from './core/game'
-import { mountAdaptiveDebugGrid } from './debug/adaptiveDebugGrid'
-import { mountScreenSweepWalkers } from './debug/screenSweepDebug'
-import type { ScreenSweepWalkerConfig } from './debug/screenSweepDebug'
-import { mountSnowOverlay } from './debug/snowOverlayDebug'
+import { mountAdaptiveDebugGrid } from './debugArch/adaptiveDebugGrid'
+import { mountScreenSweepWalkers } from './debugArch/screenSweepDebug'
+import type { ScreenSweepWalkerConfig } from './debugArch/screenSweepDebug'
+import { mountSnowOverlay } from './debugArch/snowOverlayDebug'
 import { pixiColors } from './utils/pixiColors'
 
 /**
  * 参考格子边长，仅用于从设计分辨率推导「列数、行数」；实际像素边长由当前窗口与列/行数决定。
  */
-const DEBUG_GRID_CELL_SIZE = 16
+const DEV_OVERLAY_GRID_CELL_SIZE = 16
 
 /**
  * 10 个扫屏精灵：不同主题色 + 不同步进间隔（毫秒），均行优先遍历全部格子。
  * stepPauseMs 均在 [20, 80] 内错开。
  */
-const DEBUG_SCREEN_SWEEP_WALKERS: ScreenSweepWalkerConfig[] = [
+const DEV_OVERLAY_SCREEN_SWEEP_WALKERS: ScreenSweepWalkerConfig[] = [
   { fillColor: pixiColors.game.player, stepPauseMs: 20 },
   { fillColor: pixiColors.game.enemy, stepPauseMs: 27 },
   { fillColor: pixiColors.game.ally, stepPauseMs: 33 },
@@ -27,11 +27,15 @@ const DEBUG_SCREEN_SWEEP_WALKERS: ScreenSweepWalkerConfig[] = [
   { fillColor: pixiColors.semantic.orange, stepPauseMs: 80 }
 ]
 
-type DebugMode = 'screen-sweep' | 'snow'
+/** 主画布上的开发用叠加层（与「调试架构」门户页不是同一概念）。 */
+type DevOverlayMode = 'screen-sweep' | 'snow'
 
-/** 无查询参数时不挂载调试层；`?debugMode=screen-sweep` / `?debugMode=snow` 显式开启。 */
-function getDebugModeFromUrl(): DebugMode | null {
-  const raw = new URLSearchParams(window.location.search).get('debugMode')
+/**
+ * 从 URL 读取 `devOverlay`：无参数则不挂载任何开发叠加层。
+ * `screen-sweep` / `snow` 用于在主游戏画布上验证网格、性能等。
+ */
+function getDevOverlayModeFromUrl(): DevOverlayMode | null {
+  const raw = new URLSearchParams(window.location.search).get('devOverlay')
   if (raw === 'screen-sweep') {
     return 'screen-sweep'
   }
@@ -43,10 +47,10 @@ function getDebugModeFromUrl(): DebugMode | null {
 
 /**
  * 启动流程与 letterbox 世界；主玩法内容尚未挂载时画布为空。
- * 调试叠加层仅在有 `?debugMode=…` 时启用（如自 `debugArch.html` 跳转）。
+ * 开发用叠加层仅在有 `?devOverlay=…` 时挂载（如自 `debugArch.html` 跳转）。
  */
 async function main(): Promise<void> {
-  const debugMode = getDebugModeFromUrl()
+  const devOverlayMode = getDevOverlayModeFromUrl()
 
   const game = new Game({
     designWidth: 1280,
@@ -63,9 +67,9 @@ async function main(): Promise<void> {
     height: game.renderer.height
   })
 
-  if (debugMode === 'screen-sweep') {
+  if (devOverlayMode === 'screen-sweep') {
     mountAdaptiveDebugGrid({
-      referenceCellSize: DEBUG_GRID_CELL_SIZE,
+      referenceCellSize: DEV_OVERLAY_GRID_CELL_SIZE,
       designWidth: game.designWidth,
       designHeight: game.designHeight,
       getRendererSize,
@@ -74,16 +78,16 @@ async function main(): Promise<void> {
     })
 
     mountScreenSweepWalkers({
-      referenceCellSize: DEBUG_GRID_CELL_SIZE,
+      referenceCellSize: DEV_OVERLAY_GRID_CELL_SIZE,
       designWidth: game.designWidth,
       designHeight: game.designHeight,
       getRendererSize,
       stage: game.stage,
       resizeObserveTarget: mount,
       ticker: game.ticker,
-      walkers: DEBUG_SCREEN_SWEEP_WALKERS
+      walkers: DEV_OVERLAY_SCREEN_SWEEP_WALKERS
     })
-  } else if (debugMode === 'snow') {
+  } else if (devOverlayMode === 'snow') {
     mountSnowOverlay({
       stage: game.stage,
       getRendererSize,
