@@ -1,22 +1,6 @@
-import {
-  DEBUG_ARCH_ENABLED_VALUE,
-  DEBUG_ARCH_LOCAL_STORAGE_KEY
-} from './utils/debugArchGate'
-
 function main(): void {
   const root = document.getElementById('debugArchRoot')
   if (!root) {
-    return
-  }
-
-  if (localStorage.getItem(DEBUG_ARCH_LOCAL_STORAGE_KEY) !== DEBUG_ARCH_ENABLED_VALUE) {
-    root.innerHTML = `
-      <div id="debugArchDenied">
-        <p>未授权访问调试架构入口。</p>
-        <p>请在控制台将下列键设为 <strong>1</strong> 后刷新本页：</p>
-        <code>${DEBUG_ARCH_LOCAL_STORAGE_KEY}</code>
-      </div>
-    `
     return
   }
 

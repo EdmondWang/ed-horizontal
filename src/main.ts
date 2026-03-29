@@ -29,18 +29,21 @@ const DEBUG_SCREEN_SWEEP_WALKERS: ScreenSweepWalkerConfig[] = [
 
 type DebugMode = 'screen-sweep' | 'snow'
 
-/** 无查询参数时默认扫屏模式；`?debugMode=snow` 为下雪叠加层。 */
-function getDebugModeFromUrl(): DebugMode {
+/** 无查询参数时不挂载调试层；`?debugMode=screen-sweep` / `?debugMode=snow` 显式开启。 */
+function getDebugModeFromUrl(): DebugMode | null {
   const raw = new URLSearchParams(window.location.search).get('debugMode')
+  if (raw === 'screen-sweep') {
+    return 'screen-sweep'
+  }
   if (raw === 'snow') {
     return 'snow'
   }
-  return 'screen-sweep'
+  return null
 }
 
 /**
- * 启动流程、letterbox 世界与调试叠加层。
- * 默认扫屏调试；`debugArch.html` 可跳转 `?debugMode=snow`。
+ * 启动流程与 letterbox 世界；主玩法内容尚未挂载时画布为空。
+ * 调试叠加层仅在有 `?debugMode=…` 时启用（如自 `debugArch.html` 跳转）。
  */
 async function main(): Promise<void> {
   const debugMode = getDebugModeFromUrl()
@@ -80,7 +83,7 @@ async function main(): Promise<void> {
       ticker: game.ticker,
       walkers: DEBUG_SCREEN_SWEEP_WALKERS
     })
-  } else {
+  } else if (debugMode === 'snow') {
     mountSnowOverlay({
       stage: game.stage,
       getRendererSize,
