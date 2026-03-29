@@ -1,5 +1,5 @@
-import { Application, Container, Renderer } from 'pixi.js'
-import { applyLetterbox } from './Viewport'
+import { Application, Container, Renderer, Ticker } from 'pixi.js'
+import { applyLetterbox } from './viewport'
 
 /** 每帧回调，参数为与上一帧的时间间隔（秒）。 */
 export type GameFrameCallback = (deltaSeconds: number) => void
@@ -71,6 +71,14 @@ export class Game {
       throw new Error('Game 尚未 init')
     }
     return this.app.stage
+  }
+
+  /** 初始化后可访问；用于与渲染同帧的叠加效果（如下雪调试层）。 */
+  get ticker(): Ticker {
+    if (!this.app) {
+      throw new Error('Game 尚未 init')
+    }
+    return this.app.ticker
   }
 
   async init(): Promise<void> {

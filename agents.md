@@ -1,6 +1,6 @@
 # 协作者与 AI 助手约定
 
-本文档用于快速对齐本仓库的**架构意图与修改习惯**。更完整的说明见 `README.md`；颜色体系见 `COLORS.md`。
+本文档用于快速对齐本仓库的**架构意图与修改习惯**。更完整的说明见 `readme.md`；颜色体系见 `colors.md`。
 
 ## 项目目标
 
@@ -8,8 +8,8 @@
 
 ## 实现前请先做
 
-1. 阅读 `README.md` 中的「设计约定」与项目结构。
-2. 涉及全屏适配、缩放、指针坐标时，阅读并复用 `src/core/Game.ts`、`src/core/Viewport.ts`，**不要**复制 letterbox 或 `clientToWorld` 的平行实现。
+1. 阅读 `readme.md` 中的「设计约定」与项目结构。
+2. 涉及全屏适配、缩放、指针坐标时，阅读并复用 `src/core/game.ts`、`src/core/viewport.ts`，**不要**复制 letterbox 或 `clientToWorld` 的平行实现。
 3. 涉及颜色时，对照 `src/styles/colors.css` 与 `src/utils/pixiColors.ts`。
 
 ## 修改原则
@@ -21,10 +21,10 @@
 
 ## 代码风格
 
-- **注释**：`src` 内注释一律使用**中文**（见 `.cursor/rules/ed-horizontal.mdc`）。
+- **注释**：`src` 内注释一律使用**中文**（见 `.cursor/rules/edHorizontal.mdc`）。
 - **ESLint 优先于 Prettier**：以 `.eslintrc.cjs` 为准；若两者冲突，调整 `.prettierrc` 以符合 ESLint，而不是反过来关闭 ESLint 规则来迁就 Prettier。
 - **模块**：优先 **named export** 与 **named import**（见 ESLint `import/no-default-export`；配置文件等在 `overrides` 中允许 default）。
 
 ## 与 Cursor 规则的关系
 
-仓库内 `.cursor/rules/ed-horizontal.mdc` 会提示上述习惯；详细条目仍以本文件与 `README.md` 为准。
+仓库内 `.cursor/rules/edHorizontal.mdc` 会提示上述习惯；详细条目仍以本文件与 `readme.md` 为准。

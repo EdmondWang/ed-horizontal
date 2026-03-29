@@ -17,8 +17,8 @@
 ```
 src/
 ├── core/
-│   ├── Game.ts      # Application、letterbox 根节点 `world`、ticker 回调、resize 清理
-│   └── Viewport.ts  # applyLetterbox、clientToWorld（屏幕 → 逻辑坐标）
+│   ├── game.ts      # Application、letterbox 根节点 `world`、ticker 回调、resize 清理
+│   └── viewport.ts  # applyLetterbox、clientToWorld（屏幕 → 逻辑坐标）
 ├── utils/
 │   └── pixiColors.ts  # 与 colors.css 对齐的 Pixi 十六进制色值
 ├── styles/
@@ -31,9 +31,9 @@ src/
 - **逻辑分辨率**：在 `Game` 构造参数中设定 `designWidth` / `designHeight`（如 1280×720）。所有游戏内坐标、布局在此空间内计算。
 - **屏幕适配**：由 `Viewport.applyLetterbox` 与 `Game` 内 `resize` 处理；**不要**在项目其他地方重复写一套缩放/居中公式。
 - **指针坐标**：使用 `clientToWorld(clientX, clientY, canvas, game.world)` 得到逻辑坐标，再去做格子命中等逻辑。
-- **颜色**：页面用 `colors.css`；画布内用 `pixiColors` 或局部字面量，并与 CSS 语义保持一致（见 `COLORS.md`）。
+- **颜色**：页面用 `colors.css`；画布内用 `pixiColors` 或局部字面量，并与 CSS 语义保持一致（见 `colors.md`）。
 - **演进方式**：在现有 `Game` / `Viewport` / `pixiColors` 上**增量扩展**，避免平行实现第二套引擎层。
-- **代码风格**：`src` 内注释使用中文；遵守 ESLint（优先于 Prettier）；优先 named export / named import。详见 `AGENTS.md`。
+- **代码风格**：`src` 内注释使用中文；遵守 ESLint（优先于 Prettier）；优先 named export / named import。详见 `agents.md`。
 
 ## 开发命令
 
@@ -48,8 +48,8 @@ npm run format
 
 ## 文档
 
-- `COLORS.md` — CSS 变量与 Pixi 颜色对照、主题说明。
-- `AGENTS.md` — 给协作者与 AI 助手的项目约定摘要。
+- `colors.md` — CSS 变量与 Pixi 颜色对照、主题说明。
+- `agents.md` — 给协作者与 AI 助手的项目约定摘要。
 
 ## 后续迭代（按需）
 

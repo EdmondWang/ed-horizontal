@@ -1,14 +1,19 @@
 ---
-description: ed-horizontal 项目约定 — 复用 Game/Viewport/颜色工具；ESLint 优先；named import/export；src 内中文注释
+description: ed-horizontal 项目约定 — 复用 game/viewport/颜色工具；ESLint 优先；named import/export；src 内中文注释；文件小驼峰命名
 alwaysApply: true
 ---
 
 # ed-horizontal
 
-- 实现新功能前阅读仓库根目录 `README.md` 与 `AGENTS.md`。
-- 全屏 letterbox、resize、`clientToWorld`：**只使用** `src/core/Game.ts` 与 `src/core/Viewport.ts`，不要另写一套缩放/居中。
-- 画布颜色：优先 `src/utils/pixiColors.ts`，并与 `src/styles/colors.css` 语义一致；见 `COLORS.md`。
+- 实现新功能前阅读仓库根目录 `readme.md` 与 `agents.md`。
+- 全屏 letterbox、resize、`clientToWorld`：**只使用** `src/core/game.ts` 与 `src/core/viewport.ts`，不要另写一套缩放/居中。
+- 画布颜色：优先 `src/utils/pixiColors.ts`，并与 `src/styles/colors.css` 语义一致；见 `colors.md`。
 - 在现有模块上**增量扩展**，避免平行实现第二套游戏引擎层。
+
+## 文件命名
+
+- **小驼峰（camelCase）**：新增/重命名的源码、脚本、页面入口（如 `game.ts`、`debugArch.html`、`viteEnv.d.ts`）一律采用首字母小写的驼峰形式；**不要**使用连字符 `kebab-case` 或蛇形 `snake_case`。
+- **例外（可不改名）**：`index.html`、`package.json`、`package-lock.json`、以点开头的工具配置（如 `.eslintrc.cjs`、`.prettierrc`）、`vite.config.ts` 等社区惯例文件名；根目录说明文档 `readme.md`、`agents.md`、`colors.md`。
 
 ## 代码风格（生成与修改代码时必须遵守）
 
