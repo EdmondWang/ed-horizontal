@@ -19,43 +19,31 @@ const DEBUG_SCREEN_SWEEP_WALKERS: ScreenSweepWalkerConfig[] = [
   { fillColor: pixiColors.game.enemy, stepPauseMs: 27 },
   { fillColor: pixiColors.game.ally, stepPauseMs: 33 },
   { fillColor: pixiColors.game.neutral, stepPauseMs: 40 },
-  { fillColor: 0xf59e0b, stepPauseMs: 47 },
-  { fillColor: 0xa855f7, stepPauseMs: 53 },
-  { fillColor: 0x06b6d4, stepPauseMs: 60 },
-  { fillColor: 0xec4899, stepPauseMs: 67 },
-  { fillColor: 0x84cc16, stepPauseMs: 73 },
-  { fillColor: 0xf97316, stepPauseMs: 80 }
+  { fillColor: pixiColors.semantic.warning, stepPauseMs: 47 },
+  { fillColor: pixiColors.semantic.violet, stepPauseMs: 53 },
+  { fillColor: pixiColors.semantic.cyan, stepPauseMs: 60 },
+  { fillColor: pixiColors.semantic.fuchsia, stepPauseMs: 67 },
+  { fillColor: pixiColors.semantic.lime, stepPauseMs: 73 },
+  { fillColor: pixiColors.semantic.orange, stepPauseMs: 80 }
 ]
 
 type DebugMode = 'screen-sweep' | 'snow'
 
-function getDebugModeFromUrl(): DebugMode | null {
+/** 无查询参数时默认扫屏模式；`?debugMode=snow` 为下雪叠加层。 */
+function getDebugModeFromUrl(): DebugMode {
   const raw = new URLSearchParams(window.location.search).get('debugMode')
-  if (raw === 'screen-sweep' || raw === 'snow') {
-    return raw
+  if (raw === 'snow') {
+    return 'snow'
   }
-  return null
+  return 'screen-sweep'
 }
 
 /**
- * 第一阶段：启动流程、letterbox 世界与可选的开发用边框。
- * 调试叠加层需带 `?debugMode=screen-sweep` 或 `?debugMode=snow`，由 debugArch.html 进入。
+ * 启动流程、letterbox 世界与调试叠加层。
+ * 默认扫屏调试；`debugArch.html` 可跳转 `?debugMode=snow`。
  */
 async function main(): Promise<void> {
   const debugMode = getDebugModeFromUrl()
-
-  if (debugMode === null) {
-    document.body.insertAdjacentHTML(
-      'beforeend',
-      `<div id="boot-hint" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:var(--font-family-base);color:var(--color-text-secondary);background:var(--color-bg-primary);line-height:1.6;z-index:1;">
-        <div style="max-width:420px;">
-          <p>请从<strong>调试架构入口</strong>选择模式。</p>
-          <p style="margin-top:12px;font-size:0.9em;">打开 <code style="word-break:break-all;">debugArch.html</code>（需 localStorage 门禁）。</p>
-        </div>
-      </div>`
-    )
-    return
-  }
 
   const game = new Game({
     designWidth: 1280,

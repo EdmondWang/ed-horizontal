@@ -10,5 +10,15 @@ export const pixiColors = {
     enemy: 0xef4444,
     ally: 0x3b82f6,
     neutral: 0x94a3b8
+  },
+  /** 与 `colors.css` 中状态/强调色一致或同系，供画布内非「游戏阵营」语义使用。 */
+  semantic: {
+    /** 与 `--color-warning` 一致 */
+    warning: 0xf59e0b,
+    violet: 0xa855f7,
+    cyan: 0x06b6d4,
+    fuchsia: 0xec4899,
+    lime: 0x84cc16,
+    orange: 0xf97316
   }
 } as const

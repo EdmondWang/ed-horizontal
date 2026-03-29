@@ -10,6 +10,8 @@ module.exports = {
   },
   plugins: ['@typescript-eslint', 'import'],
   rules: {
+    /** 单文件物理行数上限（含空行与注释）。 */
+    'max-lines': ['error', { max: 500 }],
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
