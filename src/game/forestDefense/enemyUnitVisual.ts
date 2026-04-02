@@ -1,25 +1,56 @@
-import { Graphics } from 'pixi.js'
+import { Graphics, Sprite, Texture } from 'pixi.js'
 import { pixiColors } from '../../utils/pixiColors'
+import { ENEMY_TEXTURE } from './config'
+import { layoutEnemySprite } from './enemySpriteLayout'
 import {
   buildMeleeOrcSilhouette,
   buildRockThrowerSilhouette,
   buildWarBeastSilhouette
 } from './unitSilhouettes'
-import type { OrcRun } from './types'
+import type { EnemyKind, OrcRun } from './types'
 
-/** 灰斧劫掠兵身体（敌线局部）。 */
-export function createMeleeOrcBody(): Graphics {
-  return buildMeleeOrcSilhouette()
+function textureUrlForEnemy(kind: EnemyKind): string | undefined {
+  switch (kind) {
+    case 'melee':
+      return ENEMY_TEXTURE.melee
+    case 'rockthrower':
+      return ENEMY_TEXTURE.rockthrower
+    case 'warbeast':
+      return ENEMY_TEXTURE.warbeast
+    default:
+      return undefined
+  }
 }
 
-/** 投石蛮卒身体（敌线局部）。 */
-export function createRockThrowerBody(): Graphics {
-  return buildRockThrowerSilhouette()
+function buildFallbackBody(kind: EnemyKind): Graphics {
+  switch (kind) {
+    case 'melee':
+      return buildMeleeOrcSilhouette()
+    case 'rockthrower':
+      return buildRockThrowerSilhouette()
+    case 'warbeast':
+      return buildWarBeastSilhouette()
+    default:
+      return buildMeleeOrcSilhouette()
+  }
 }
 
-/** 裂皮战争巨兽身体（敌线局部，中型跨道）。 */
-export function createWarBeastBody(): Graphics {
-  return buildWarBeastSilhouette()
+/**
+ * 敌线单位身体：配置中有贴图则 `Sprite`（按车道高度与敌线宽度缩放），否则 Graphics 剪影。
+ */
+export function createEnemyBody(
+  kind: EnemyKind,
+  laneHeight: number,
+  enemyColumnWidth: number,
+  laneSpan: 1 | 2
+): Graphics | Sprite {
+  const url = textureUrlForEnemy(kind)
+  if (url) {
+    const sprite = new Sprite(Texture.from(url))
+    layoutEnemySprite(sprite, kind, laneHeight, enemyColumnWidth, laneSpan)
+    return sprite
+  }
+  return buildFallbackBody(kind)
 }
 
 /** 兽人头顶血条。 */

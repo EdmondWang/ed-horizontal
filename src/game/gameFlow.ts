@@ -1,7 +1,7 @@
 import { Container, Graphics, Rectangle, Text } from 'pixi.js'
 import type { Game } from '../core/game'
 import type { MainLayoutColumns } from '../mainLayout'
-import { mountForestDefense } from './forestDefense'
+import { mountForestDefense, preloadForestDefenseUnitTextures } from './forestDefense'
 import { pixiColors } from '../utils/pixiColors'
 
 /** 逻辑分辨率内简易文字按钮（矩形命中区）。 */
@@ -97,7 +97,9 @@ export function mountGameFlow(options: {
   menuSub.y = designHeight * 0.28 + 52
   mainMenu.addChild(menuSub)
 
-  const startBtn = makeTextButton('开始游戏', 200, 48, () => startNewRun())
+  const startBtn = makeTextButton('开始游戏', 200, 48, () => {
+    void startNewRun()
+  })
   startBtn.x = designWidth / 2 - 100
   startBtn.y = designHeight * 0.5
   mainMenu.addChild(startBtn)
@@ -218,7 +220,7 @@ export function mountGameFlow(options: {
   resultModal.addChild(resultPanel)
   uiLayer.addChild(resultModal)
 
-  function startNewRun(): void {
+  async function startNewRun(): Promise<void> {
     prototypeDestroy?.()
     prototypeDestroy = null
     paused = false
@@ -226,6 +228,8 @@ export function mountGameFlow(options: {
     resultModal.visible = false
     mainMenu.visible = false
     pauseBtn.visible = true
+
+    await preloadForestDefenseUnitTextures()
 
     const run = mountForestDefense({
       game,

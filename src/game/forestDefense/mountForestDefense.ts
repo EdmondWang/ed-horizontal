@@ -25,12 +25,7 @@ import {
   WAR_BEAST_SPEED
 } from './config'
 import { tickEnemyRockProjectiles, tickRockThrowerRanged } from './enemyRockCombat'
-import {
-  createMeleeOrcBody,
-  createRockThrowerBody,
-  createWarBeastBody,
-  drawOrcHpBar
-} from './enemyUnitVisual'
+import { createEnemyBody, drawOrcHpBar } from './enemyUnitVisual'
 import { createDefendSlotGrid } from './defendSlotGrid'
 import { createHitRingGraphics, tickHitRings } from './hitRingVfx'
 import { findFrontmostOrcInLane } from './laneQueries'
@@ -58,6 +53,8 @@ export interface MountForestDefenseOptions {
 
 /**
  * 挂载林缘防线玩法：`gameDesign.md` 中的林息、采集/防御单位、伤害公式与灵苗池等。
+ *
+ * 若单位在 `config` 中配置了 `textureUrl`，须先 `await preloadForestDefenseUnitTextures()` 再挂载，否则贴图可能未就绪。
  *
  * 每帧子系统顺序（便于排查交互）：周期造敌 → 兽人左移/冲线败北 → 灰斧/巨兽近战 → 投石发射 →
  * 敌投石弹道 → 命中环 → 芽箭弹道 → 采集产林息 → 芽弓射击 → 判胜。
@@ -166,11 +163,8 @@ export function mountForestDefense(options: MountForestDefenseOptions): { destro
     root.y =
       laneSpan === 2 ? (lane + 1) * laneHeight : lane * laneHeight + laneHeight * 0.5
 
-    const body = isWarBeast
-      ? createWarBeastBody()
-      : isGreyAxe
-        ? createMeleeOrcBody()
-        : createRockThrowerBody()
+    const enemyKind = isWarBeast ? 'warbeast' : isGreyAxe ? 'melee' : 'rockthrower'
+    const body = createEnemyBody(enemyKind, laneHeight, enemyW, laneSpan)
     root.addChild(body)
 
     const hpBar = new Graphics()
@@ -187,7 +181,7 @@ export function mountForestDefense(options: MountForestDefenseOptions): { destro
       laneSpan,
       hitFlashMs: 0,
       meleeAcc: 0,
-      enemyKind: isWarBeast ? 'warbeast' : isGreyAxe ? 'melee' : 'rockthrower',
+      enemyKind,
       rangedAcc: 0
     }
     orcs.push(run)

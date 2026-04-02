@@ -1,4 +1,4 @@
-import type { Container, Graphics } from 'pixi.js'
+import type { Container, Graphics, Sprite } from 'pixi.js'
 
 /** 战场击中环（与 `hitRingVfx` 对应）。 */
 export interface HitRingEntry {
@@ -13,7 +13,8 @@ export type EnemyKind = 'melee' | 'rockthrower' | 'warbeast'
 
 export interface OrcRun {
   root: Container
-  body: Graphics
+  /** 有贴图时为 `Sprite`，否则为 `Graphics` 剪影。 */
+  body: Graphics | Sprite
   hpBar: Graphics
   hp: number
   maxHp: number
@@ -32,7 +33,8 @@ export interface OrcRun {
 export interface PlacedUnit {
   kind: BlueprintKind
   root: Container
-  body: Graphics
+  /** 有贴图时为 `Sprite`，否则为 `Graphics` 剪影（受击等可统一设 `tint`）。 */
+  body: Graphics | Sprite
   hpBar: Graphics
   hp: number
   maxHp: number

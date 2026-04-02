@@ -97,7 +97,8 @@ export const UNIT_GATHERER = {
   armor: 0,
   attack: 0,
   gatherIntervalMs: 2000,
-  gatherAmount: 10
+  gatherAmount: 10,
+  textureUrl: '/assets/sprites/gatherer-sprout.png'
 } as const
 
 /** 芽弓巡林者 — 与 `gameDesign.md` 占位表一致。 */
@@ -106,7 +107,19 @@ export const UNIT_ARCHER = {
   cost: 80,
   maxHp: 120,
   armor: 5,
-  attack: 22
+  attack: 22,
+  /**
+   * 可选：贴图 URL（Vite `public` 相对站点根，如 `/assets/sprites/foo.png`）。
+   * 若未设置，则使用 `unitSilhouettes` 中的静态 Graphics 剪影。
+   */
+  textureUrl: '/assets/sprites/archer-ranger.png'
+} as const
+
+/** 兽人敌线立绘（朝左面向防线）；未使用则回退 `unitSilhouettes` Graphics。 */
+export const ENEMY_TEXTURE = {
+  melee: '/assets/sprites/orc-melee.png',
+  rockthrower: '/assets/sprites/orc-rockthrower.png',
+  warbeast: '/assets/sprites/war-beast.png'
 } as const
 
 /** 槽位虚线框：内缩、虚线段长、间隙（与 `drawDashedRectOutline` 一致）。 */
