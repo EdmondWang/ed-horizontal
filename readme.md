@@ -19,9 +19,9 @@ src/
 ├── core/            # 引擎壳：与「玩哪一关、什么单位」无关，可复用于其他横屏项目
 │   ├── game.ts      # Application、letterbox 根节点 `world`、ticker 回调、resize 清理
 │   └── viewport.ts  # applyLetterbox、clientToWorld（屏幕 → 逻辑坐标）
-├── game/            # 具体玩法 / 关卡原型（依赖 `core` + `mainLayout`，可整体替换或并行加新模式）
-│   ├── forestDefense/  # 示例：林缘防线原型（配置、挂载逻辑）
-│   └── minimalPrototype.ts  # 稳定入口 re-export，便于 `main` 引用路径不变
+├── game/            # 具体玩法（依赖 `core` + `mainLayout`，可整体替换或并行加新模式）
+│   ├── forestDefense/  # 林缘防线：配置、挂载 `mountForestDefense` 与战斗子模块
+│   └── gameFlow.ts     # 主菜单 / 暂停 / 结算，并挂载林缘防线对局
 ├── utils/
 │   ├── pixiColors.ts    # 与 colors.css 对齐的 Pixi 十六进制色值
 │   ├── pixiDashedRect.ts # 虚线矩形/线段（画布装饰）

@@ -1,5 +1,11 @@
 import type { Container, Graphics } from 'pixi.js'
 
+/** 战场击中环（与 `hitRingVfx` 对应）。 */
+export interface HitRingEntry {
+  g: Graphics
+  ttlMs: number
+}
+
 export type BlueprintKind = 'gatherer' | 'archer'
 
 /** 兽人类型：近战劫掠兵 / 远程投石蛮卒。 */

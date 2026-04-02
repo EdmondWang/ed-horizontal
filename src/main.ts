@@ -1,5 +1,5 @@
 import { Game } from './core/game'
-import { mountMinimalForestDefensePrototype } from './game/minimalPrototype'
+import { mountGameFlow } from './game/gameFlow'
 import { mountMainTwoColumnLayout } from './mainLayout'
 import type { DevOverlayMode } from './types/devOverlay'
 import { mountAdaptiveDebugGrid } from './debugArch/adaptiveDebugGrid'
@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   })
 
   if (layout) {
-    mountMinimalForestDefensePrototype({ game, layout })
+    mountGameFlow({ game, layout })
   }
 
   const mount = document.getElementById('game-container')

@@ -24,11 +24,11 @@ export function tickPlayerFlyingBullets(
     defendW: number
     laneCenterY: (lane: number) => number
     orcs: OrcRun[]
-    drawOrcHp: (run: OrcRun) => void
+    drawOrcHpBar: (run: OrcRun) => void
     spawnHitRing: (x: number, y: number) => void
   }
 ): void {
-  const { defendW, laneCenterY, orcs, drawOrcHp, spawnHitRing } = ctx
+  const { defendW, laneCenterY, orcs, drawOrcHpBar, spawnHitRing } = ctx
   for (let i = flyingBullets.length - 1; i >= 0; i--) {
     const b = flyingBullets[i]
     if (!orcs.includes(b.target) || b.target.hp <= 0) {
@@ -55,7 +55,7 @@ export function tickPlayerFlyingBullets(
       if (orcs.includes(t) && t.hp > 0) {
         const dmg = computeDamageAgainstArmor(b.attack, t.armor)
         t.hp -= dmg
-        drawOrcHp(t)
+        drawOrcHpBar(t)
         t.hitFlashMs = HIT_FLASH_MS
         spawnHitRing(ex, ey)
         if (t.hp <= 0) {

@@ -1,11 +1,9 @@
-import { Container, Graphics, Text } from 'pixi.js'
+import { Container, Graphics } from 'pixi.js'
 import type { Game } from '../../core/game'
 import type { MainLayoutColumns } from '../../mainLayout'
-import { pixiColors } from '../../utils/pixiColors'
 import {
   colFromSlotIndex,
   FIRE_INTERVAL_MS,
-  HIT_RING_MS,
   laneFromSlotIndex,
   LANE_COUNT,
   ORC_ARMOR,
@@ -23,30 +21,40 @@ import {
   UNIT_GATHERER
 } from './config'
 import { tickEnemyRockProjectiles, tickRockThrowerRanged } from './enemyRockCombat'
+import { createMeleeOrcBody, createRockThrowerBody, drawOrcHpBar } from './enemyUnitVisual'
 import { createDefendSlotGrid } from './defendSlotGrid'
+import { createHitRingGraphics, tickHitRings } from './hitRingVfx'
+import { findFrontmostOrcInLane } from './laneQueries'
 import { tickOrcMeleeOnDefenders } from './orcMeleeCombat'
+import { createPlacedUnit, drawPlacedUnitHpBar } from './placedUnitVisual'
 import { createPlayerBulletShape, tickPlayerFlyingBullets } from './playerBulletCombat'
 import { mountPoolPanel } from './poolPanel'
 import type {
   BlueprintKind,
   EnemyRockProjectile,
   FlyingBullet,
+  HitRingEntry,
   OrcRun,
   PlacedUnit
 } from './types'
 
-export interface MountMinimalPrototypeOptions {
+export interface MountForestDefenseOptions {
   game: Game
   layout: MainLayoutColumns
+  /** 为 true 时本帧不推进玩法（暂停）。 */
+  isPaused?: () => boolean
+  /** 分出胜负时回调一次（用于主菜单流程展示结算）。 */
+  onMatchEnd?: (result: 'win' | 'lose') => void
 }
 
 /**
- * 林缘防线原型：`gameDesign.md` 中的林息、采集/防御单位、伤害公式与灵苗池展示。
+ * 挂载林缘防线玩法：`gameDesign.md` 中的林息、采集/防御单位、伤害公式与灵苗池等。
+ *
+ * 每帧子系统顺序（便于排查交互）：周期造敌 → 兽人左移/冲线败北 → 灰斧近战 → 投石发射 →
+ * 敌投石弹道 → 命中环 → 芽箭弹道 → 采集产林息 → 芽弓射击 → 判胜。
  */
-export function mountMinimalForestDefensePrototype(
-  options: MountMinimalPrototypeOptions
-): { destroy: () => void } {
-  const { game, layout } = options
+export function mountForestDefense(options: MountForestDefenseOptions): { destroy: () => void } {
+  const { game, layout, isPaused, onMatchEnd } = options
   const {
     entityPoolCol,
     battleAreaCol,
@@ -87,7 +95,7 @@ export function mountMinimalForestDefensePrototype(
 
   const flyingBullets: FlyingBullet[] = []
   const enemyRockProjectiles: EnemyRockProjectile[] = []
-  const hitRings: { g: Graphics; ttlMs: number }[] = []
+  const hitRings: HitRingEntry[] = []
 
   const bulletLayer = new Container()
   bulletLayer.label = 'bulletLayer'
@@ -96,26 +104,6 @@ export function mountMinimalForestDefensePrototype(
 
   const orcs: OrcRun[] = []
   const placedUnits: (PlacedUnit | null)[] = Array.from({ length: SLOT_COUNT }, () => null)
-
-  const overlay = new Container()
-  overlay.label = 'minimal-prototype-overlay'
-  overlay.eventMode = 'none'
-  game.stage.addChild(overlay)
-
-  const endText = new Text({
-    text: '',
-    style: {
-      fill: 0xffffff,
-      fontSize: 28,
-      fontFamily: 'system-ui, sans-serif',
-      align: 'center',
-      stroke: { color: 0x000000, width: 4 }
-    }
-  })
-  endText.anchor.set(0.5)
-  endText.x = game.designWidth / 2
-  endText.y = game.designHeight / 2
-  overlay.addChild(endText)
 
   function tryPlaceUnit(lane: number, col: number): void {
     if (phase !== 'playing' || selectedBlueprint === null) {
@@ -130,52 +118,9 @@ export function mountMinimalForestDefensePrototype(
       return
     }
     resource -= def.cost
-    const u = createPlacedUnit(selectedBlueprint, idx)
+    const u = createPlacedUnit(selectedBlueprint, idx, slotRoots, cellW, laneHeight)
     placedUnits[idx] = u
     poolPanel.syncPoolUi()
-  }
-
-  function createPlacedUnit(kind: BlueprintKind, idx: number): PlacedUnit {
-    const def = kind === 'gatherer' ? UNIT_GATHERER : UNIT_ARCHER
-    const root = new Container()
-    root.label = def.name
-
-    const body = new Graphics()
-    if (kind === 'gatherer') {
-      body.roundRect(6, laneHeight * 0.28, cellW - 12, laneHeight * 0.44, 5)
-      body.fill({ color: 0x5eead4 })
-      body.stroke({ width: 1, color: 0xccfbf1, alpha: 0.55 })
-    } else {
-      body.roundRect(6, laneHeight * 0.25, cellW - 12, laneHeight * 0.5, 6)
-      body.fill({ color: pixiColors.game.player })
-      body.stroke({ width: 1, color: 0xffffff, alpha: 0.35 })
-    }
-    root.addChild(body)
-
-    const hpBar = new Graphics()
-    root.addChild(hpBar)
-
-    slotRoots[idx].addChild(root)
-    const unit: PlacedUnit = {
-      kind,
-      root,
-      body,
-      hpBar,
-      hp: def.maxHp,
-      maxHp: def.maxHp,
-      armor: def.armor,
-      attack: def.attack
-    }
-    drawPlacedUnitHp(unit)
-    return unit
-  }
-
-  function drawPlacedUnitHp(u: PlacedUnit): void {
-    u.hpBar.clear()
-    const ratio = u.hp / u.maxHp
-    const barW = cellW - 14
-    u.hpBar.rect(7, 7, barW * ratio, 4)
-    u.hpBar.fill({ color: 0x34d399 })
   }
 
   function removePlacedUnitAt(idx: number): void {
@@ -199,15 +144,7 @@ export function mountMinimalForestDefensePrototype(
     root.x = enemyW - 36
     root.y = lane * laneHeight + laneHeight * 0.5
 
-    const body = new Graphics()
-    if (isGreyAxe) {
-      body.roundRect(-28, -18, 56, 36, 4)
-      body.fill({ color: pixiColors.game.enemy })
-    } else {
-      body.roundRect(-24, -16, 48, 32, 4)
-      body.fill({ color: 0x78350f })
-      body.stroke({ width: 1, color: 0xea580c, alpha: 0.65 })
-    }
+    const body = isGreyAxe ? createMeleeOrcBody() : createRockThrowerBody()
     root.addChild(body)
 
     const hpBar = new Graphics()
@@ -227,15 +164,8 @@ export function mountMinimalForestDefensePrototype(
       rangedAcc: 0
     }
     orcs.push(run)
-    drawOrcHp(run)
+    drawOrcHpBar(run)
     enemyLineCol.addChild(root)
-  }
-
-  function drawOrcHp(run: OrcRun): void {
-    run.hpBar.clear()
-    const ratio = run.hp / run.maxHp
-    run.hpBar.rect(-30, -26, 60 * ratio, 5)
-    run.hpBar.fill({ color: pixiColors.game.player })
   }
 
   function laneCenterY(lane: number): number {
@@ -251,8 +181,7 @@ export function mountMinimalForestDefensePrototype(
   }
 
   function spawnHitRing(x: number, y: number): void {
-    const g = new Graphics()
-    g.eventMode = 'none'
+    const g = createHitRingGraphics()
     g.x = x
     g.y = y
     bulletLayer.addChild(g)
@@ -279,31 +208,11 @@ export function mountMinimalForestDefensePrototype(
       run.root.x -= ORC_SPEED * dt
       if (run.root.x <= ORC_LOSE_LINE_X) {
         phase = 'lose'
-        endText.text = '斧痕过线，母树沉默。'
+        onMatchEnd?.('lose')
         return true
       }
     }
     return false
-  }
-
-  function tickHitRings(dMs: number): void {
-    for (let i = hitRings.length - 1; i >= 0; i--) {
-      const ring = hitRings[i]
-      ring.ttlMs += dMs
-      const u = ring.ttlMs / HIT_RING_MS
-      ring.g.clear()
-      const r = 10 + ring.ttlMs * 0.35
-      ring.g.circle(0, 0, r)
-      ring.g.stroke({
-        width: 2,
-        color: 0xfbbf24,
-        alpha: Math.max(0, 1 - u)
-      })
-      if (ring.ttlMs >= HIT_RING_MS) {
-        ring.g.destroy()
-        hitRings.splice(i, 1)
-      }
-    }
   }
 
   function tickGatherers(dMs: number): void {
@@ -337,18 +246,7 @@ export function mountMinimalForestDefensePrototype(
       const lane = laneFromSlotIndex(i)
       const col = colFromSlotIndex(i)
       const muzzleX = (col + 1) * cellW - 6
-      let best: OrcRun | null = null
-      let bestEnemyX = Number.POSITIVE_INFINITY
-      for (const run of orcs) {
-        if (run.lane !== lane) {
-          continue
-        }
-        const ex = defendW + run.root.x
-        if (ex < bestEnemyX) {
-          bestEnemyX = ex
-          best = run
-        }
-      }
+      const best = findFrontmostOrcInLane(orcs, lane, defendW)
       if (best === null) {
         continue
       }
@@ -360,11 +258,14 @@ export function mountMinimalForestDefensePrototype(
   function tickWinIfCleared(): void {
     if (orcsSpawned >= ORCS_TO_WIN && orcs.length === 0) {
       phase = 'win'
-      endText.text = '林线还在，根脉未断。'
+      onMatchEnd?.('win')
     }
   }
 
   function tick(): void {
+    if (isPaused?.()) {
+      return
+    }
     if (phase !== 'playing') {
       return
     }
@@ -375,7 +276,9 @@ export function mountMinimalForestDefensePrototype(
     if (tickOrcs(dt, dMs)) {
       return
     }
-    tickOrcMeleeOnDefenders(orcs, dMs, placedUnits, removePlacedUnitAt, drawPlacedUnitHp)
+    tickOrcMeleeOnDefenders(orcs, dMs, placedUnits, removePlacedUnitAt, (u) =>
+      drawPlacedUnitHpBar(u, cellW)
+    )
     tickRockThrowerRanged(orcs, dMs, {
       defendW,
       laneCenterY,
@@ -389,15 +292,15 @@ export function mountMinimalForestDefensePrototype(
       dMs,
       placedUnits,
       removePlacedUnitAt,
-      drawPlacedUnitHp,
+      (u) => drawPlacedUnitHpBar(u, cellW),
       spawnHitRing
     )
-    tickHitRings(dMs)
+    tickHitRings(hitRings, dMs)
     tickPlayerFlyingBullets(flyingBullets, dMs, {
       defendW,
       laneCenterY,
       orcs,
-      drawOrcHp,
+      drawOrcHpBar,
       spawnHitRing
     })
     tickGatherers(dMs)
@@ -432,11 +335,10 @@ export function mountMinimalForestDefensePrototype(
       hitRings.length = 0
       bulletLayer.removeFromParent()
       bulletLayer.destroy({ children: true })
-      overlay.removeFromParent()
-      overlay.destroy({ children: true })
       poolPanel.destroy()
-      for (const u of placedUnits) {
-        u?.root.destroy({ children: true })
+      for (const slot of slotRoots) {
+        slot.removeFromParent()
+        slot.destroy({ children: true })
       }
       for (const run of orcs) {
         run.root.destroy({ children: true })

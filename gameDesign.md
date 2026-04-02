@@ -123,9 +123,9 @@
 
 - 主界面列容器与背景色：`src/mainLayout.ts`（`mountMainTwoColumnLayout` 返回 `MainLayoutColumns` 供玩法挂载）。
 - 逻辑分辨率与画布：`src/core/game.ts`、`src/core/viewport.ts`。
-- **林缘防线原型**（实现进度以仓库为准，**本文档规则可先于代码落地**）：  
-  - 入口：`src/main.ts` → `mountMinimalForestDefensePrototype`（`src/game/minimalPrototype.ts` 转发至 `src/game/forestDefense/`）。  
-  - 当前原型含 **7×3 槽位**、林息与双蓝图、弧线芽箭、**灰斧近战 + 投石蛮卒远程**、兽人波次与生成权重等；数值以 `forestDefense/config.ts` 为准。
+- **林缘防线玩法**（实现进度以仓库为准，**本文档规则可先于代码落地**）：  
+  - 入口：`src/main.ts` → `mountGameFlow` → `mountForestDefense`（`src/game/forestDefense/mountForestDefense.ts`）。  
+  - 当前实现含 **7×3 槽位**、林息与双蓝图、弧线芽箭、**灰斧近战 + 投石蛮卒远程**、兽人波次与生成权重等；数值以 `forestDefense/config.ts` 为准。
 
 ---
 
