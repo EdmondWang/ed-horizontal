@@ -56,10 +56,23 @@ export const ORC_MELEE_RANGE_ENEMY_X = 88
 export const ORC_MELEE_INTERVAL_MS = 700
 
 /**
- * 生成兽人时抽到「灰斧劫掠兵」的概率（0～1）。
- * 其余为「投石蛮卒」：`1 - SPAWN_WEIGHT_GREY_AXE`。
+ * 生成兽人时抽到「裂皮战争巨兽」的概率（0～1）；其余再按 `SPAWN_WEIGHT_GREY_AXE` 在灰斧与投石间分配。
+ */
+export const SPAWN_WEIGHT_WAR_BEAST = 0.12
+
+/**
+ * 在非巨兽的生成中，抽到「灰斧劫掠兵」的概率（0～1）。
+ * 其余为「投石蛮卒」。
  */
 export const SPAWN_WEIGHT_GREY_AXE = 0.4
+
+/** 裂皮战争巨兽：高生命、高护甲、移动慢；近战攻击覆盖其跨占的两道。 */
+export const WAR_BEAST_MAX_HP = 220
+export const WAR_BEAST_ARMOR = 14
+/** 逻辑像素/秒（显著低于 `ORC_SPEED`）。 */
+export const WAR_BEAST_SPEED = 28
+/** 巨兽近战强度（打己方单位时参与伤害公式）。 */
+export const WAR_BEAST_MELEE_ATTACK = 12
 
 /** 投石蛮卒远程攻击强度（打己方单位参与伤害公式）。 */
 export const ROCK_THROWER_ATTACK = 14

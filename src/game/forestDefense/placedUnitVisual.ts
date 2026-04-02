@@ -1,6 +1,6 @@
 import { Container, Graphics } from 'pixi.js'
-import { pixiColors } from '../../utils/pixiColors'
 import { UNIT_ARCHER, UNIT_GATHERER } from './config'
+import { buildArcherSilhouette, buildGathererSilhouette } from './unitSilhouettes'
 import type { BlueprintKind, PlacedUnit } from './types'
 
 /** 防线槽内己方单位血条。 */
@@ -26,16 +26,11 @@ export function createPlacedUnit(
   const root = new Container()
   root.label = def.name
 
-  const body = new Graphics()
-  if (kind === 'gatherer') {
-    body.roundRect(6, laneHeight * 0.28, cellW - 12, laneHeight * 0.44, 5)
-    body.fill({ color: 0x5eead4 })
-    body.stroke({ width: 1, color: 0xccfbf1, alpha: 0.55 })
-  } else {
-    body.roundRect(6, laneHeight * 0.25, cellW - 12, laneHeight * 0.5, 6)
-    body.fill({ color: pixiColors.game.player })
-    body.stroke({ width: 1, color: 0xffffff, alpha: 0.35 })
-  }
+  const body =
+    kind === 'gatherer'
+      ? buildGathererSilhouette(cellW, laneHeight)
+      : buildArcherSilhouette(cellW, laneHeight)
+  body.position.set(6, kind === 'gatherer' ? laneHeight * 0.28 : laneHeight * 0.25)
   root.addChild(body)
 
   const hpBar = new Graphics()

@@ -3,6 +3,7 @@ import {
   ORC_MELEE_ATTACK,
   ORC_MELEE_INTERVAL_MS,
   ORC_MELEE_RANGE_ENEMY_X,
+  WAR_BEAST_MELEE_ATTACK,
   slotIndex
 } from './config'
 import { computeDamageAgainstArmor } from './damage'
@@ -16,7 +17,7 @@ export function tickOrcMeleeOnDefenders(
   drawPlacedUnitHp: (u: PlacedUnit) => void
 ): void {
   for (const run of orcs) {
-    if (run.enemyKind !== 'melee') {
+    if (run.enemyKind !== 'melee' && run.enemyKind !== 'warbeast') {
       continue
     }
     if (run.root.x > ORC_MELEE_RANGE_ENEMY_X) {
@@ -27,21 +28,24 @@ export function tickOrcMeleeOnDefenders(
       continue
     }
     run.meleeAcc = 0
-    const lane = run.lane
-    for (let col = 0; col < COLS_PER_LANE; col++) {
-      const idx = slotIndex(lane, col)
-      const u = placedUnits[idx]
-      if (u === null) {
-        continue
+    const atk =
+      run.enemyKind === 'warbeast' ? WAR_BEAST_MELEE_ATTACK : ORC_MELEE_ATTACK
+    for (let laneIdx = run.lane; laneIdx < run.lane + run.laneSpan; laneIdx++) {
+      for (let col = 0; col < COLS_PER_LANE; col++) {
+        const idx = slotIndex(laneIdx, col)
+        const u = placedUnits[idx]
+        if (u === null) {
+          continue
+        }
+        const dmg = computeDamageAgainstArmor(atk, u.armor)
+        u.hp -= dmg
+        if (u.hp <= 0) {
+          removePlacedUnitAt(idx)
+        } else {
+          drawPlacedUnitHp(u)
+        }
+        break
       }
-      const dmg = computeDamageAgainstArmor(ORC_MELEE_ATTACK, u.armor)
-      u.hp -= dmg
-      if (u.hp <= 0) {
-        removePlacedUnitAt(idx)
-      } else {
-        drawPlacedUnitHp(u)
-      }
-      break
     }
   }
 }

@@ -15,13 +15,22 @@ import {
   SLOT_COUNT,
   SPAWN_INTERVAL_MS,
   SPAWN_WEIGHT_GREY_AXE,
+  SPAWN_WEIGHT_WAR_BEAST,
   slotIndex,
   STARTING_RESOURCE,
   UNIT_ARCHER,
-  UNIT_GATHERER
+  UNIT_GATHERER,
+  WAR_BEAST_ARMOR,
+  WAR_BEAST_MAX_HP,
+  WAR_BEAST_SPEED
 } from './config'
 import { tickEnemyRockProjectiles, tickRockThrowerRanged } from './enemyRockCombat'
-import { createMeleeOrcBody, createRockThrowerBody, drawOrcHpBar } from './enemyUnitVisual'
+import {
+  createMeleeOrcBody,
+  createRockThrowerBody,
+  createWarBeastBody,
+  drawOrcHpBar
+} from './enemyUnitVisual'
 import { createDefendSlotGrid } from './defendSlotGrid'
 import { createHitRingGraphics, tickHitRings } from './hitRingVfx'
 import { findFrontmostOrcInLane } from './laneQueries'
@@ -50,7 +59,7 @@ export interface MountForestDefenseOptions {
 /**
  * 挂载林缘防线玩法：`gameDesign.md` 中的林息、采集/防御单位、伤害公式与灵苗池等。
  *
- * 每帧子系统顺序（便于排查交互）：周期造敌 → 兽人左移/冲线败北 → 灰斧近战 → 投石发射 →
+ * 每帧子系统顺序（便于排查交互）：周期造敌 → 兽人左移/冲线败北 → 灰斧/巨兽近战 → 投石发射 →
  * 敌投石弹道 → 命中环 → 芽箭弹道 → 采集产林息 → 芽弓射击 → 判胜。
  */
 export function mountForestDefense(options: MountForestDefenseOptions): { destroy: () => void } {
@@ -137,14 +146,31 @@ export function mountForestDefense(options: MountForestDefenseOptions): { destro
       return
     }
     orcsSpawned++
-    const lane = Math.floor(Math.random() * LANE_COUNT)
-    const isGreyAxe = Math.random() < SPAWN_WEIGHT_GREY_AXE
-    const root = new Container()
-    root.label = isGreyAxe ? '灰斧劫掠兵' : '投石蛮卒'
-    root.x = enemyW - 36
-    root.y = lane * laneHeight + laneHeight * 0.5
+    const roll = Math.random()
+    const isWarBeast = roll < SPAWN_WEIGHT_WAR_BEAST
+    const isGreyAxe = !isWarBeast && Math.random() < SPAWN_WEIGHT_GREY_AXE
 
-    const body = isGreyAxe ? createMeleeOrcBody() : createRockThrowerBody()
+    let lane: number
+    let laneSpan: 1 | 2
+    if (isWarBeast) {
+      laneSpan = 2
+      lane = Math.floor(Math.random() * (LANE_COUNT - 1))
+    } else {
+      laneSpan = 1
+      lane = Math.floor(Math.random() * LANE_COUNT)
+    }
+
+    const root = new Container()
+    root.label = isWarBeast ? '裂皮战争巨兽' : isGreyAxe ? '灰斧劫掠兵' : '投石蛮卒'
+    root.x = enemyW - 36
+    root.y =
+      laneSpan === 2 ? (lane + 1) * laneHeight : lane * laneHeight + laneHeight * 0.5
+
+    const body = isWarBeast
+      ? createWarBeastBody()
+      : isGreyAxe
+        ? createMeleeOrcBody()
+        : createRockThrowerBody()
     root.addChild(body)
 
     const hpBar = new Graphics()
@@ -154,13 +180,14 @@ export function mountForestDefense(options: MountForestDefenseOptions): { destro
       root,
       body,
       hpBar,
-      hp: ORC_MAX_HP,
-      maxHp: ORC_MAX_HP,
-      armor: ORC_ARMOR,
+      hp: isWarBeast ? WAR_BEAST_MAX_HP : ORC_MAX_HP,
+      maxHp: isWarBeast ? WAR_BEAST_MAX_HP : ORC_MAX_HP,
+      armor: isWarBeast ? WAR_BEAST_ARMOR : ORC_ARMOR,
       lane,
+      laneSpan,
       hitFlashMs: 0,
       meleeAcc: 0,
-      enemyKind: isGreyAxe ? 'melee' : 'rockthrower',
+      enemyKind: isWarBeast ? 'warbeast' : isGreyAxe ? 'melee' : 'rockthrower',
       rangedAcc: 0
     }
     orcs.push(run)
@@ -205,7 +232,8 @@ export function mountForestDefense(options: MountForestDefenseOptions): { destro
         run.hitFlashMs -= dMs
         run.body.tint = run.hitFlashMs > 0 ? 0xfff5e6 : 0xffffff
       }
-      run.root.x -= ORC_SPEED * dt
+      const moveSpeed = run.enemyKind === 'warbeast' ? WAR_BEAST_SPEED : ORC_SPEED
+      run.root.x -= moveSpeed * dt
       if (run.root.x <= ORC_LOSE_LINE_X) {
         phase = 'lose'
         onMatchEnd?.('lose')
@@ -298,7 +326,7 @@ export function mountForestDefense(options: MountForestDefenseOptions): { destro
     tickHitRings(hitRings, dMs)
     tickPlayerFlyingBullets(flyingBullets, dMs, {
       defendW,
-      laneCenterY,
+      laneHeight,
       orcs,
       drawOrcHpBar,
       spawnHitRing

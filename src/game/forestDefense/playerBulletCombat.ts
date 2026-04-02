@@ -5,6 +5,7 @@ import {
   BULLET_FLIGHT_MS,
   HIT_FLASH_MS
 } from './config'
+import { orcAnchorWorldY } from './laneQueries'
 import { computeDamageAgainstArmor } from './damage'
 import type { FlyingBullet, OrcRun } from './types'
 
@@ -22,13 +23,13 @@ export function tickPlayerFlyingBullets(
   dMs: number,
   ctx: {
     defendW: number
-    laneCenterY: (lane: number) => number
+    laneHeight: number
     orcs: OrcRun[]
     drawOrcHpBar: (run: OrcRun) => void
     spawnHitRing: (x: number, y: number) => void
   }
 ): void {
-  const { defendW, laneCenterY, orcs, drawOrcHpBar, spawnHitRing } = ctx
+  const { defendW, laneHeight, orcs, drawOrcHpBar, spawnHitRing } = ctx
   for (let i = flyingBullets.length - 1; i >= 0; i--) {
     const b = flyingBullets[i]
     if (!orcs.includes(b.target) || b.target.hp <= 0) {
@@ -39,7 +40,7 @@ export function tickPlayerFlyingBullets(
     b.elapsedMs += dMs
     const u = Math.min(1, b.elapsedMs / BULLET_FLIGHT_MS)
     const ex = defendW + b.target.root.x
-    const ey = laneCenterY(b.target.lane)
+    const ey = orcAnchorWorldY(b.target, laneHeight)
     const midX = (b.sx + ex) * 0.5
     const midY = (b.sy + ey) * 0.5 - BULLET_ARC_LIFT
     const p0 = { x: b.sx, y: b.sy }
