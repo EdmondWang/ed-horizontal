@@ -253,6 +253,27 @@ export function mountForestDefense(options: MountForestDefenseOptions): { destro
     }
   }
 
+  function tickArcherAlertPose(): void {
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const u = placedUnits[i]
+      if (u === null || u.kind !== 'archer' || u.archerRig === undefined) {
+        continue
+      }
+      const lane = laneFromSlotIndex(i)
+      const hasEnemy = findFrontmostOrcInLane(orcs, lane, defendW) !== null
+      u.archerRig.setAlert(hasEnemy)
+    }
+  }
+
+  function tickArcherRigs(dMs: number): void {
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const u = placedUnits[i]
+      if (u?.archerRig !== undefined) {
+        u.archerRig.tick(dMs)
+      }
+    }
+  }
+
   function tickArchersFire(dMs: number): void {
     for (let i = 0; i < SLOT_COUNT; i++) {
       const u = placedUnits[i]
@@ -274,6 +295,7 @@ export function mountForestDefense(options: MountForestDefenseOptions): { destro
       }
       const sy = laneCenterY(lane)
       spawnFlyingBullet(muzzleX, sy, best, u.attack)
+      u.archerRig?.triggerShoot()
     }
   }
 
@@ -326,7 +348,9 @@ export function mountForestDefense(options: MountForestDefenseOptions): { destro
       spawnHitRing
     })
     tickGatherers(dMs)
+    tickArcherAlertPose()
     tickArchersFire(dMs)
+    tickArcherRigs(dMs)
     tickWinIfCleared()
   }
 

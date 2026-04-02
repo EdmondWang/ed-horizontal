@@ -34,8 +34,9 @@ export interface MainLayoutColumns {
 /**
  * 主界面布局（逻辑像素）：
  * - `entityPoolCol` | `battleAreaCol`
- * - `battleAreaCol` 内：`defendLineCol` | `enemyLineCol`
+ * - `battleAreaCol` 内（绘制顺序）：敌线列底图 → `defendLineCol`（槽位与己方单位）→ `enemyLineCol`（兽人）
  *
+ * 敌线底图必须先画：否则己方立绘/骨架向右伸出防线宽度时，会被后画的敌线背景盖住。
  * 各列用不同背景色便于核对；子节点通过 `label` 与场景树对应。
  */
 export function mountMainTwoColumnLayout(
@@ -68,6 +69,16 @@ export function mountMainTwoColumnLayout(
   const defendW = Math.min(defendLineColWidth, battleW)
   const enemyW = battleW - defendW
 
+  if (enemyW > 0) {
+    const enemyLineBg = new Graphics()
+    enemyLineBg.label = 'enemyLineBg'
+    enemyLineBg.x = defendW
+    enemyLineBg.rect(0, 0, enemyW, designHeight)
+    enemyLineBg.fill({ color: pixiColors.bgElevated })
+    enemyLineBg.eventMode = 'none'
+    battleAreaCol.addChild(enemyLineBg)
+  }
+
   const defendLineCol = new Container()
   defendLineCol.label = 'defendLineCol'
   addColumnBackground(defendLineCol, defendW, designHeight, pixiColors.bgTertiary)
@@ -76,9 +87,6 @@ export function mountMainTwoColumnLayout(
   const enemyLineCol = new Container()
   enemyLineCol.label = 'enemyLineCol'
   enemyLineCol.x = defendW
-  if (enemyW > 0) {
-    addColumnBackground(enemyLineCol, enemyW, designHeight, pixiColors.bgElevated)
-  }
   battleAreaCol.addChild(enemyLineCol)
 
   world.addChild(battleAreaCol)

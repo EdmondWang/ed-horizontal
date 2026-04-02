@@ -1,4 +1,5 @@
 import { Assets } from 'pixi.js'
+import { collectArcherPartTextureUrls } from './archerPartsConfig'
 import { ENEMY_TEXTURE, UNIT_ARCHER, UNIT_GATHERER } from './config'
 
 /** 收集己方蓝图与敌线配置中的贴图 URL（`public` 下路径）。 */
@@ -12,6 +13,9 @@ function collectAllForestDefenseTextureUrls(): string[] {
     ) {
       urls.add(def.textureUrl)
     }
+  }
+  for (const u of collectArcherPartTextureUrls()) {
+    urls.add(u)
   }
   for (const u of Object.values(ENEMY_TEXTURE)) {
     urls.add(u)

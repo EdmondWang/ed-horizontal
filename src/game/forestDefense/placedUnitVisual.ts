@@ -1,27 +1,13 @@
 import { Container, Graphics, Sprite, Texture } from 'pixi.js'
 import { UNIT_ARCHER, UNIT_GATHERER } from './config'
+import { ArcherRig } from './archerRig'
 import { buildArcherSilhouette, buildGathererSilhouette } from './unitSilhouettes'
+import { slotSpriteBottomCenter, slotTextureCoverBounds } from './slotUnitLayout'
 import type { BlueprintKind, PlacedUnit } from './types'
 
-/** 身体区与槽底虚线框之间的留白。 */
-const SLOT_BODY_BOTTOM_PAD = 4
-/** 与 Graphics 剪影路径一致的水平内缩（左右各 6）。 */
-const SLOT_BODY_H_INSET = 6
 /**
- * 贴图槽位水平内缩略小，便于窄列（如 `defendW=128`）下仍够大；
- * 竖向用「铺满槽高」计算缩放，血条盖在上层，可遮住角色头顶一小条。
- */
-const SLOT_TEXTURE_H_INSET = 2
-
-/** 贴图用 cover：至少铺满宽或高一维，避免宽图在窄槽里被宽度卡成几像素高。 */
-function slotTextureCoverBounds(cellW: number, laneHeight: number): { maxW: number; maxH: number } {
-  const maxW = Math.max(8, cellW - SLOT_TEXTURE_H_INSET * 2)
-  const maxH = Math.max(8, laneHeight - SLOT_BODY_BOTTOM_PAD)
-  return { maxW, maxH }
-}
-
-/**
- * 按单位配置创建身体显示：若配置了 `textureUrl` 且已预加载则使用 `Sprite`，否则使用 `Graphics` 剪影。
+ * 按单位配置创建身体显示：若配置了 `textureUrl` 且已预加载则使用 `Sprite`；
+ * **芽弓**在贴图模式下使用 `ArcherRig` 骨架 + 躯干摆姿；否则使用 `Graphics` 剪影。
  */
 function createBlueprintBody(
   kind: BlueprintKind,
@@ -30,6 +16,7 @@ function createBlueprintBody(
 ): Graphics | Sprite {
   const def = kind === 'gatherer' ? UNIT_GATHERER : UNIT_ARCHER
   if (
+    kind === 'gatherer' &&
     'textureUrl' in def &&
     typeof def.textureUrl === 'string' &&
     def.textureUrl.length > 0
@@ -43,17 +30,17 @@ function createBlueprintBody(
     const scale = Math.max(scaleW, scaleH)
     sprite.scale.set(scale)
     sprite.anchor.set(0.5, 1)
-    sprite.position.set(cellW * 0.5, laneHeight - SLOT_BODY_BOTTOM_PAD)
+    const pos = slotSpriteBottomCenter(cellW, laneHeight)
+    sprite.position.set(pos.x, pos.y)
     return sprite
   }
-  const g =
-    kind === 'gatherer'
-      ? buildGathererSilhouette(cellW, laneHeight)
-      : buildArcherSilhouette(cellW, laneHeight)
-  g.position.set(
-    SLOT_BODY_H_INSET,
-    kind === 'gatherer' ? laneHeight * 0.28 : laneHeight * 0.25
-  )
+  if (kind === 'archer') {
+    const g = buildArcherSilhouette(cellW, laneHeight)
+    g.position.set(6, laneHeight * 0.25)
+    return g
+  }
+  const g = buildGathererSilhouette(cellW, laneHeight)
+  g.position.set(6, laneHeight * 0.28)
   return g
 }
 
@@ -80,24 +67,29 @@ export function createPlacedUnit(
   const root = new Container()
   root.label = def.name
 
-  const body = createBlueprintBody(kind, cellW, laneHeight)
+  let body: Graphics | Sprite | Container
+  let archerRig: ArcherRig | undefined
+
+  const archerHasTexture =
+    kind === 'archer' &&
+    'textureUrl' in def &&
+    typeof def.textureUrl === 'string' &&
+    def.textureUrl.length > 0
+
+  if (archerHasTexture) {
+    archerRig = new ArcherRig(cellW, laneHeight)
+    body = new Container()
+    body.label = 'body'
+    body.addChild(archerRig.displayRoot)
+  } else {
+    body = createBlueprintBody(kind, cellW, laneHeight)
+    archerRig = undefined
+  }
+
   root.addChild(body)
 
   const hpBar = new Graphics()
   root.addChild(hpBar)
-
-  if (body instanceof Sprite) {
-    root.sortableChildren = true
-    const clip = new Graphics()
-    clip.eventMode = 'none'
-    clip.rect(0, 0, cellW, laneHeight)
-    clip.fill({ color: 0xffffff })
-    clip.zIndex = 0
-    body.zIndex = 0
-    hpBar.zIndex = 1
-    root.addChild(clip)
-    root.mask = clip
-  }
 
   slotRoots[slotIdx].addChild(root)
   const unit: PlacedUnit = {
@@ -108,7 +100,8 @@ export function createPlacedUnit(
     hp: def.maxHp,
     maxHp: def.maxHp,
     armor: def.armor,
-    attack: def.attack
+    attack: def.attack,
+    archerRig
   }
   drawPlacedUnitHpBar(unit, cellW)
   return unit

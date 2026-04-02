@@ -1,3 +1,4 @@
+import type { ArcherRig } from './archerRig'
 import type { Container, Graphics, Sprite } from 'pixi.js'
 
 /** 战场击中环（与 `hitRingVfx` 对应）。 */
@@ -33,13 +34,18 @@ export interface OrcRun {
 export interface PlacedUnit {
   kind: BlueprintKind
   root: Container
-  /** 有贴图时为 `Sprite`，否则为 `Graphics` 剪影（受击等可统一设 `tint`）。 */
-  body: Graphics | Sprite
+  /**
+   * 显示主体：`Graphics` / `Sprite`，或芽弓骨架时的 `Container`（内挂 `ArcherRig` 根骨骼）。
+   * 对 `Container` / `Sprite` 可设 `tint`。
+   */
+  body: Graphics | Sprite | Container
   hpBar: Graphics
   hp: number
   maxHp: number
   armor: number
   attack: number
+  /** 仅芽弓且使用贴图骨架时存在。 */
+  archerRig?: ArcherRig
 }
 
 export interface FlyingBullet {
