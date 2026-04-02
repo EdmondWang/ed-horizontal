@@ -16,15 +16,22 @@
 
 ```
 src/
-├── core/
+├── core/            # 引擎壳：与「玩哪一关、什么单位」无关，可复用于其他横屏项目
 │   ├── game.ts      # Application、letterbox 根节点 `world`、ticker 回调、resize 清理
 │   └── viewport.ts  # applyLetterbox、clientToWorld（屏幕 → 逻辑坐标）
+├── game/            # 具体玩法 / 关卡原型（依赖 `core` + `mainLayout`，可整体替换或并行加新模式）
+│   ├── forestDefense/  # 示例：林缘防线原型（配置、挂载逻辑）
+│   └── minimalPrototype.ts  # 稳定入口 re-export，便于 `main` 引用路径不变
 ├── utils/
-│   └── pixiColors.ts  # 与 colors.css 对齐的 Pixi 十六进制色值
+│   ├── pixiColors.ts    # 与 colors.css 对齐的 Pixi 十六进制色值
+│   ├── pixiDashedRect.ts # 虚线矩形/线段（画布装饰）
+│   └── bezier2.ts       # 二次贝塞尔点（弹道等）
 ├── styles/
 │   └── colors.css   # 页面/UI 用 CSS 变量
-└── main.ts          # 入口：创建 Game、挂载占位内容
+└── main.ts          # 入口：创建 Game、挂载布局与玩法
 ```
+
+**为何分 `core` 与 `game`**：`core` 只负责「画布、逻辑分辨率、缩放、时钟」；`game` 负责「规则、实体、UI 文案」。这样换关卡、加第二个 demo 时不必复制引擎代码，也符合「单一逻辑坐标系在 `Game`，玩法在 `world` 子树」的约定。
 
 ## 设计约定（实现新功能前请先读）
 

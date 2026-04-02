@@ -1,4 +1,5 @@
 import { Game } from './core/game'
+import { mountMinimalForestDefensePrototype } from './game/minimalPrototype'
 import { mountMainTwoColumnLayout } from './mainLayout'
 import type { DevOverlayMode } from './types/devOverlay'
 import { mountAdaptiveDebugGrid } from './debugArch/adaptiveDebugGrid'
@@ -59,11 +60,15 @@ async function main(): Promise<void> {
 
   await game.init()
 
-  mountMainTwoColumnLayout({
+  const layout = mountMainTwoColumnLayout({
     world: game.world,
     designWidth: game.designWidth,
     designHeight: game.designHeight
   })
+
+  if (layout) {
+    mountMinimalForestDefensePrototype({ game, layout })
+  }
 
   const mount = document.getElementById('game-container')
   const getRendererSize = (): { width: number; height: number } => ({

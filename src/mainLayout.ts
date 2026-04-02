@@ -18,6 +18,19 @@ export interface MountMainTwoColumnLayoutOptions {
   defendLineColWidth?: number
 }
 
+/** `mountMainTwoColumnLayout` 返回的列容器，供玩法挂载子节点。 */
+export interface MainLayoutColumns {
+  entityPoolCol: Container
+  battleAreaCol: Container
+  defendLineCol: Container
+  enemyLineCol: Container
+  entityW: number
+  defendW: number
+  enemyW: number
+  battleW: number
+  designHeight: number
+}
+
 /**
  * 主界面布局（逻辑像素）：
  * - `entityPoolCol` | `battleAreaCol`
@@ -25,7 +38,9 @@ export interface MountMainTwoColumnLayoutOptions {
  *
  * 各列用不同背景色便于核对；子节点通过 `label` 与场景树对应。
  */
-export function mountMainTwoColumnLayout(options: MountMainTwoColumnLayoutOptions): void {
+export function mountMainTwoColumnLayout(
+  options: MountMainTwoColumnLayoutOptions
+): MainLayoutColumns | null {
   const {
     world,
     designWidth,
@@ -43,7 +58,7 @@ export function mountMainTwoColumnLayout(options: MountMainTwoColumnLayoutOption
   world.addChild(entityPoolCol)
 
   if (battleW <= 0) {
-    return
+    return null
   }
 
   const battleAreaCol = new Container()
@@ -67,6 +82,18 @@ export function mountMainTwoColumnLayout(options: MountMainTwoColumnLayoutOption
   battleAreaCol.addChild(enemyLineCol)
 
   world.addChild(battleAreaCol)
+
+  return {
+    entityPoolCol,
+    battleAreaCol,
+    defendLineCol,
+    enemyLineCol,
+    entityW,
+    defendW,
+    enemyW,
+    battleW,
+    designHeight
+  }
 }
 
 /** 在容器内绘制与列同宽的矩形背景（局部坐标从 0,0 起）。 */
@@ -82,5 +109,7 @@ function addColumnBackground(
   const g = new Graphics()
   g.rect(0, 0, width, height)
   g.fill({ color: fillColor })
+  /** 不拦截指针，避免挡住上层槽位、按钮的点击。 */
+  g.eventMode = 'none'
   parent.addChild(g)
 }
