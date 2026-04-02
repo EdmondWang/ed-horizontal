@@ -1,61 +1,47 @@
-import { Container, Graphics, Rectangle, Text } from 'pixi.js'
+import { Container, Graphics, Text } from 'pixi.js'
 import type { Game } from '../../core/game'
 import type { MainLayoutColumns } from '../../mainLayout'
-import { quadBezierPoint } from '../../utils/bezier2'
-import { drawDashedRectOutline } from '../../utils/pixiDashedRect'
 import { pixiColors } from '../../utils/pixiColors'
 import {
-  BULLET_ARC_LIFT,
-  BULLET_FLIGHT_MS,
-  COLS_PER_LANE,
   colFromSlotIndex,
   FIRE_INTERVAL_MS,
-  HIT_FLASH_MS,
   HIT_RING_MS,
   laneFromSlotIndex,
   LANE_COUNT,
-  ORC_HP,
+  ORC_ARMOR,
   ORC_LOSE_LINE_X,
+  ORC_MAX_HP,
   ORC_SPEED,
   ORCS_PER_SPAWN,
   ORCS_TO_WIN,
-  POOL_START,
   SLOT_COUNT,
-  SLOT_DASH_GAP,
-  SLOT_DASH_INSET,
-  SLOT_DASH_LEN,
   SPAWN_INTERVAL_MS,
-  slotIndex
+  SPAWN_WEIGHT_GREY_AXE,
+  slotIndex,
+  STARTING_RESOURCE,
+  UNIT_ARCHER,
+  UNIT_GATHERER
 } from './config'
+import { tickEnemyRockProjectiles, tickRockThrowerRanged } from './enemyRockCombat'
+import { createDefendSlotGrid } from './defendSlotGrid'
+import { tickOrcMeleeOnDefenders } from './orcMeleeCombat'
+import { createPlayerBulletShape, tickPlayerFlyingBullets } from './playerBulletCombat'
+import { mountPoolPanel } from './poolPanel'
+import type {
+  BlueprintKind,
+  EnemyRockProjectile,
+  FlyingBullet,
+  OrcRun,
+  PlacedUnit
+} from './types'
 
 export interface MountMinimalPrototypeOptions {
   game: Game
   layout: MainLayoutColumns
 }
 
-interface OrcRun {
-  root: Container
-  body: Graphics
-  hpBar: Graphics
-  hp: number
-  lane: number
-  /** 受击闪白剩余时间（毫秒）。 */
-  hitFlashMs: number
-}
-
-/** 飞行中的短弹体（`battleAreaCol` 局部坐标）。 */
-interface FlyingBullet {
-  g: Graphics
-  elapsedMs: number
-  sx: number
-  sy: number
-  target: OrcRun
-}
-
 /**
- * 最小可玩原型（`gameDesign.md`）：灵苗池点选 → 七纵三列防线槽位部署芽弓；
- * 基础远程仅在**本道防线**锁定同车道兽人；**短弹体**沿二次贝塞尔弧飞向目标，命中后扣血、受击闪白 + 扩散环。
- * 兽人冲过敌线左缘则败；消灭足够数量则胜。
+ * 林缘防线原型：`gameDesign.md` 中的林息、采集/防御单位、伤害公式与灵苗池展示。
  */
 export function mountMinimalForestDefensePrototype(
   options: MountMinimalPrototypeOptions
@@ -74,15 +60,33 @@ export function mountMinimalForestDefensePrototype(
   type Phase = 'playing' | 'win' | 'lose'
 
   let phase: Phase = 'playing'
-  let poolRemaining = POOL_START
+  let resource = STARTING_RESOURCE
+  let selectedBlueprint: BlueprintKind | null = null
   let orcsSpawned = 0
   let spawnAcc = 0
-  const fireAcc: number[] = Array.from({ length: SLOT_COUNT }, () => 0)
+  const slotActionAcc: number[] = Array.from({ length: SLOT_COUNT }, () => 0)
 
-  const laneHeight = designHeight / LANE_COUNT
-  const cellW = defendW / COLS_PER_LANE
+  const poolW = layout.entityW
+  const poolPanel = mountPoolPanel(
+    entityPoolCol,
+    poolW,
+    designHeight,
+    () => resource,
+    () => selectedBlueprint,
+    (k) => {
+      selectedBlueprint = k
+    }
+  )
+
+  const { slotRoots, cellW, laneHeight } = createDefendSlotGrid(
+    defendLineCol,
+    defendW,
+    designHeight,
+    tryPlaceUnit
+  )
 
   const flyingBullets: FlyingBullet[] = []
+  const enemyRockProjectiles: EnemyRockProjectile[] = []
   const hitRings: { g: Graphics; ttlMs: number }[] = []
 
   const bulletLayer = new Container()
@@ -91,83 +95,10 @@ export function mountMinimalForestDefensePrototype(
   battleAreaCol.addChild(bulletLayer)
 
   const orcs: OrcRun[] = []
-  const defenders: (Graphics | null)[] = Array.from({ length: SLOT_COUNT }, () => null)
-
-  /** 槽位占位（空槽可点部署），索引 `slotIndex(lane, col)`。 */
-  const slotRoots: Container[] = []
-  for (let lane = 0; lane < LANE_COUNT; lane++) {
-    for (let col = 0; col < COLS_PER_LANE; col++) {
-      const slot = new Container()
-      slot.x = col * cellW
-      slot.y = lane * laneHeight
-      slot.label = `defendSlot-${lane}-${col}`
-      /** 仅 stroke 时命中区极窄，几乎点不到；用整块矩形作为 hitArea。 */
-      slot.hitArea = new Rectangle(0, 0, cellW, laneHeight)
-      slot.eventMode = 'static'
-      slot.cursor = 'pointer'
-      slot.on('pointerdown', () => tryPlaceDefender(lane, col))
-      const hint = new Graphics()
-      hint.eventMode = 'none'
-      const hw = cellW - SLOT_DASH_INSET * 2
-      const hh = laneHeight - SLOT_DASH_INSET * 2
-      drawDashedRectOutline(
-        hint,
-        SLOT_DASH_INSET,
-        SLOT_DASH_INSET,
-        hw,
-        hh,
-        SLOT_DASH_LEN,
-        SLOT_DASH_GAP
-      )
-      hint.stroke({
-        width: 2,
-        color: 0xe2e8f0,
-        alpha: 0.98,
-        cap: 'round',
-        join: 'round'
-      })
-      slot.addChild(hint)
-      defendLineCol.addChild(slot)
-      slotRoots.push(slot)
-    }
-  }
-
-  const poolHint = new Text({
-    text: '',
-    style: {
-      fill: pixiColors.game.player,
-      fontSize: 14,
-      fontFamily: 'system-ui, sans-serif',
-      wordWrap: true,
-      wordWrapWidth: layout.entityW - 8
-    }
-  })
-  poolHint.anchor.set(0.5, 0)
-  poolHint.x = layout.entityW / 2
-  poolHint.y = 12
-  poolHint.eventMode = 'none'
-  entityPoolCol.addChild(poolHint)
-
-  const titleHint = new Text({
-    text: '青林誓环\n点防线空槽部署',
-    style: {
-      fill: 0xe2e8f0,
-      fontSize: 12,
-      fontFamily: 'system-ui, sans-serif',
-      align: 'center',
-      wordWrap: true,
-      wordWrapWidth: layout.entityW - 8
-    }
-  })
-  titleHint.anchor.set(0.5, 0)
-  titleHint.x = layout.entityW / 2
-  titleHint.y = designHeight - 72
-  titleHint.eventMode = 'none'
-  entityPoolCol.addChild(titleHint)
+  const placedUnits: (PlacedUnit | null)[] = Array.from({ length: SLOT_COUNT }, () => null)
 
   const overlay = new Container()
   overlay.label = 'minimal-prototype-overlay'
-  /** 不挡下方 `world` 内点击；胜负文案仅展示。 */
   overlay.eventMode = 'none'
   game.stage.addChild(overlay)
 
@@ -186,49 +117,115 @@ export function mountMinimalForestDefensePrototype(
   endText.y = game.designHeight / 2
   overlay.addChild(endText)
 
-  function syncPoolText(): void {
-    poolHint.text = `芽弓 ×${poolRemaining}\n（点防线空槽）`
-  }
-
-  function tryPlaceDefender(lane: number, col: number): void {
-    if (phase !== 'playing') {
+  function tryPlaceUnit(lane: number, col: number): void {
+    if (phase !== 'playing' || selectedBlueprint === null) {
       return
     }
     const idx = slotIndex(lane, col)
-    if (poolRemaining <= 0 || defenders[idx] !== null) {
+    if (placedUnits[idx] !== null) {
       return
     }
-    poolRemaining--
-    const g = new Graphics()
-    g.label = '芽弓巡林者'
-    g.roundRect(8, laneHeight * 0.25, cellW - 16, laneHeight * 0.5, 6)
-    g.fill({ color: pixiColors.game.player })
-    g.stroke({ width: 1, color: 0xffffff, alpha: 0.35 })
-    slotRoots[idx].addChild(g)
-    defenders[idx] = g
-    syncPoolText()
+    const def = selectedBlueprint === 'gatherer' ? UNIT_GATHERER : UNIT_ARCHER
+    if (resource < def.cost) {
+      return
+    }
+    resource -= def.cost
+    const u = createPlacedUnit(selectedBlueprint, idx)
+    placedUnits[idx] = u
+    poolPanel.syncPoolUi()
   }
 
-  function spawnOrc(): void {
-    if (phase !== 'playing' || orcsSpawned >= ORCS_TO_WIN) {
-      return
-    }
-    orcsSpawned++
-    const lane = Math.floor(Math.random() * LANE_COUNT)
+  function createPlacedUnit(kind: BlueprintKind, idx: number): PlacedUnit {
+    const def = kind === 'gatherer' ? UNIT_GATHERER : UNIT_ARCHER
     const root = new Container()
-    root.label = '灰斧劫掠兵'
-    root.x = enemyW - 36
-    root.y = lane * laneHeight + laneHeight * 0.5
+    root.label = def.name
 
     const body = new Graphics()
-    body.roundRect(-28, -18, 56, 36, 4)
-    body.fill({ color: pixiColors.game.enemy })
+    if (kind === 'gatherer') {
+      body.roundRect(6, laneHeight * 0.28, cellW - 12, laneHeight * 0.44, 5)
+      body.fill({ color: 0x5eead4 })
+      body.stroke({ width: 1, color: 0xccfbf1, alpha: 0.55 })
+    } else {
+      body.roundRect(6, laneHeight * 0.25, cellW - 12, laneHeight * 0.5, 6)
+      body.fill({ color: pixiColors.game.player })
+      body.stroke({ width: 1, color: 0xffffff, alpha: 0.35 })
+    }
     root.addChild(body)
 
     const hpBar = new Graphics()
     root.addChild(hpBar)
 
-    const run: OrcRun = { root, body, hpBar, hp: ORC_HP, lane, hitFlashMs: 0 }
+    slotRoots[idx].addChild(root)
+    const unit: PlacedUnit = {
+      kind,
+      root,
+      body,
+      hpBar,
+      hp: def.maxHp,
+      maxHp: def.maxHp,
+      armor: def.armor,
+      attack: def.attack
+    }
+    drawPlacedUnitHp(unit)
+    return unit
+  }
+
+  function drawPlacedUnitHp(u: PlacedUnit): void {
+    u.hpBar.clear()
+    const ratio = u.hp / u.maxHp
+    const barW = cellW - 14
+    u.hpBar.rect(7, 7, barW * ratio, 4)
+    u.hpBar.fill({ color: 0x34d399 })
+  }
+
+  function removePlacedUnitAt(idx: number): void {
+    const u = placedUnits[idx]
+    if (!u) {
+      return
+    }
+    u.root.destroy({ children: true })
+    placedUnits[idx] = null
+  }
+
+  function spawnEnemy(): void {
+    if (phase !== 'playing' || orcsSpawned >= ORCS_TO_WIN) {
+      return
+    }
+    orcsSpawned++
+    const lane = Math.floor(Math.random() * LANE_COUNT)
+    const isGreyAxe = Math.random() < SPAWN_WEIGHT_GREY_AXE
+    const root = new Container()
+    root.label = isGreyAxe ? '灰斧劫掠兵' : '投石蛮卒'
+    root.x = enemyW - 36
+    root.y = lane * laneHeight + laneHeight * 0.5
+
+    const body = new Graphics()
+    if (isGreyAxe) {
+      body.roundRect(-28, -18, 56, 36, 4)
+      body.fill({ color: pixiColors.game.enemy })
+    } else {
+      body.roundRect(-24, -16, 48, 32, 4)
+      body.fill({ color: 0x78350f })
+      body.stroke({ width: 1, color: 0xea580c, alpha: 0.65 })
+    }
+    root.addChild(body)
+
+    const hpBar = new Graphics()
+    root.addChild(hpBar)
+
+    const run: OrcRun = {
+      root,
+      body,
+      hpBar,
+      hp: ORC_MAX_HP,
+      maxHp: ORC_MAX_HP,
+      armor: ORC_ARMOR,
+      lane,
+      hitFlashMs: 0,
+      meleeAcc: 0,
+      enemyKind: isGreyAxe ? 'melee' : 'rockthrower',
+      rangedAcc: 0
+    }
     orcs.push(run)
     drawOrcHp(run)
     enemyLineCol.addChild(root)
@@ -236,32 +233,21 @@ export function mountMinimalForestDefensePrototype(
 
   function drawOrcHp(run: OrcRun): void {
     run.hpBar.clear()
-    const ratio = run.hp / ORC_HP
+    const ratio = run.hp / run.maxHp
     run.hpBar.rect(-30, -26, 60 * ratio, 5)
     run.hpBar.fill({ color: pixiColors.game.player })
   }
 
-  /** 本道防线中心 Y（`battleAreaCol` 局部）。 */
   function laneCenterY(lane: number): number {
     return lane * laneHeight + laneHeight * 0.5
   }
 
-  /** 短弹体精灵（芽箭），锚点约在尖端。 */
-  function createBulletShape(): Graphics {
-    const g = new Graphics()
-    g.eventMode = 'none'
-    g.roundRect(0, -4, 14, 8, 3)
-    g.fill({ color: 0xa7f3d0, alpha: 0.95 })
-    g.stroke({ width: 1, color: 0xffffff, alpha: 0.65 })
-    return g
-  }
-
-  function spawnFlyingBullet(sx: number, sy: number, target: OrcRun): void {
-    const g = createBulletShape()
+  function spawnFlyingBullet(sx: number, sy: number, target: OrcRun, attack: number): void {
+    const g = createPlayerBulletShape()
     g.x = sx
     g.y = sy
     bulletLayer.addChild(g)
-    flyingBullets.push({ g, elapsedMs: 0, sx, sy, target })
+    flyingBullets.push({ g, elapsedMs: 0, sx, sy, target, attack })
   }
 
   function spawnHitRing(x: number, y: number): void {
@@ -279,12 +265,11 @@ export function mountMinimalForestDefensePrototype(
       spawnAcc = 0
       const n = Math.min(ORCS_PER_SPAWN, ORCS_TO_WIN - orcsSpawned)
       for (let k = 0; k < n; k++) {
-        spawnOrc()
+        spawnEnemy()
       }
     }
   }
 
-  /** 兽人移动、受击闪白衰减、败北判定。 */
   function tickOrcs(dt: number, dMs: number): boolean {
     for (const run of orcs) {
       if (run.hitFlashMs > 0) {
@@ -321,64 +306,36 @@ export function mountMinimalForestDefensePrototype(
     }
   }
 
-  function tickFlyingBullets(dMs: number): void {
-    for (let i = flyingBullets.length - 1; i >= 0; i--) {
-      const b = flyingBullets[i]
-      if (!orcs.includes(b.target) || b.target.hp <= 0) {
-        b.g.destroy()
-        flyingBullets.splice(i, 1)
+  function tickGatherers(dMs: number): void {
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const u = placedUnits[i]
+      if (u === null || u.kind !== 'gatherer') {
         continue
       }
-      b.elapsedMs += dMs
-      const u = Math.min(1, b.elapsedMs / BULLET_FLIGHT_MS)
-      const ex = defendW + b.target.root.x
-      const ey = laneCenterY(b.target.lane)
-      const midX = (b.sx + ex) * 0.5
-      const midY = (b.sy + ey) * 0.5 - BULLET_ARC_LIFT
-      const p0 = { x: b.sx, y: b.sy }
-      const p1 = { x: midX, y: midY }
-      const p2 = { x: ex, y: ey }
-      const pos = quadBezierPoint(p0, p1, p2, u)
-      const posNext = quadBezierPoint(p0, p1, p2, Math.min(1, u + 0.04))
-      b.g.x = pos.x
-      b.g.y = pos.y
-      b.g.rotation = Math.atan2(posNext.y - pos.y, posNext.x - pos.x)
-      if (u >= 1) {
-        const t = b.target
-        if (orcs.includes(t) && t.hp > 0) {
-          t.hp -= 1
-          drawOrcHp(t)
-          t.hitFlashMs = HIT_FLASH_MS
-          spawnHitRing(ex, ey)
-          if (t.hp <= 0) {
-            t.root.removeFromParent()
-            t.root.destroy({ children: true })
-            const idx = orcs.indexOf(t)
-            if (idx >= 0) {
-              orcs.splice(idx, 1)
-            }
-          }
-        }
-        b.g.destroy()
-        flyingBullets.splice(i, 1)
+      slotActionAcc[i] += dMs
+      if (slotActionAcc[i] < UNIT_GATHERER.gatherIntervalMs) {
+        continue
       }
+      slotActionAcc[i] = 0
+      resource += UNIT_GATHERER.gatherAmount
+      poolPanel.syncPoolUi()
     }
   }
 
-  function tickDefendersFire(dMs: number): void {
+  function tickArchersFire(dMs: number): void {
     for (let i = 0; i < SLOT_COUNT; i++) {
-      if (defenders[i] === null) {
+      const u = placedUnits[i]
+      if (u === null || u.kind !== 'archer') {
         continue
       }
-      fireAcc[i] += dMs
-      if (fireAcc[i] < FIRE_INTERVAL_MS) {
+      slotActionAcc[i] += dMs
+      if (slotActionAcc[i] < FIRE_INTERVAL_MS) {
         continue
       }
-      fireAcc[i] = 0
+      slotActionAcc[i] = 0
 
       const lane = laneFromSlotIndex(i)
       const col = colFromSlotIndex(i)
-      /** 芽弓从该槽位靠敌线一侧射出，仅攻击**本车道**兽人。 */
       const muzzleX = (col + 1) * cellW - 6
       let best: OrcRun | null = null
       let bestEnemyX = Number.POSITIVE_INFINITY
@@ -396,7 +353,7 @@ export function mountMinimalForestDefensePrototype(
         continue
       }
       const sy = laneCenterY(lane)
-      spawnFlyingBullet(muzzleX, sy, best)
+      spawnFlyingBullet(muzzleX, sy, best, u.attack)
     }
   }
 
@@ -418,17 +375,41 @@ export function mountMinimalForestDefensePrototype(
     if (tickOrcs(dt, dMs)) {
       return
     }
+    tickOrcMeleeOnDefenders(orcs, dMs, placedUnits, removePlacedUnitAt, drawPlacedUnitHp)
+    tickRockThrowerRanged(orcs, dMs, {
+      defendW,
+      laneCenterY,
+      cellW,
+      placedUnits,
+      bulletLayer,
+      enemyRockProjectiles
+    })
+    tickEnemyRockProjectiles(
+      enemyRockProjectiles,
+      dMs,
+      placedUnits,
+      removePlacedUnitAt,
+      drawPlacedUnitHp,
+      spawnHitRing
+    )
     tickHitRings(dMs)
-    tickFlyingBullets(dMs)
-    tickDefendersFire(dMs)
+    tickPlayerFlyingBullets(flyingBullets, dMs, {
+      defendW,
+      laneCenterY,
+      orcs,
+      drawOrcHp,
+      spawnHitRing
+    })
+    tickGatherers(dMs)
+    tickArchersFire(dMs)
     tickWinIfCleared()
   }
 
-  syncPoolText()
+  poolPanel.syncPoolUi()
   {
     const n = Math.min(ORCS_PER_SPAWN, ORCS_TO_WIN - orcsSpawned)
     for (let k = 0; k < n; k++) {
-      spawnOrc()
+      spawnEnemy()
     }
   }
 
@@ -441,6 +422,10 @@ export function mountMinimalForestDefensePrototype(
         b.g.destroy()
       }
       flyingBullets.length = 0
+      for (const p of enemyRockProjectiles) {
+        p.g.destroy()
+      }
+      enemyRockProjectiles.length = 0
       for (const r of hitRings) {
         r.g.destroy()
       }
@@ -449,8 +434,9 @@ export function mountMinimalForestDefensePrototype(
       bulletLayer.destroy({ children: true })
       overlay.removeFromParent()
       overlay.destroy({ children: true })
-      for (const d of defenders) {
-        d?.destroy()
+      poolPanel.destroy()
+      for (const u of placedUnits) {
+        u?.root.destroy({ children: true })
       }
       for (const run of orcs) {
         run.root.destroy({ children: true })
